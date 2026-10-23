@@ -172,7 +172,8 @@ PASSWORD_RESET_RATE_LIMIT = env_int("PASSWORD_RESET_RATE_LIMIT", 5)
 PASSWORD_RESET_RATE_WINDOW = env_int("PASSWORD_RESET_RATE_WINDOW_SECONDS", 3600)
 TRUST_X_FORWARDED_FOR = env_bool("DJANGO_TRUST_X_FORWARDED_FOR", False)
 
-if env("CACHE_BACKEND", "locmem") == "db":
+# Production defaults to the shared database cache so rate limits hold across gunicorn workers.
+if env("CACHE_BACKEND", "db" if IS_PRODUCTION else "locmem") == "db":
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "django_cache"}}
 else:
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "seo-dashboard"}}

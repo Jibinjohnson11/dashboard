@@ -1,4 +1,5 @@
 import getpass
+import os
 
 from django.contrib.auth import get_user_model, password_validation
 from django.core.exceptions import ValidationError
@@ -17,6 +18,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--email", help="Admin email address")
         parser.add_argument("--name", help="Admin full name")
+        parser.add_argument(
+            "--noinput", action="store_true",
+            help="Read DJANGO_ADMIN_EMAIL, DJANGO_ADMIN_NAME and DJANGO_ADMIN_PASSWORD from the environment "
+                 "(for hosts without an interactive shell). Does nothing if the admin already exists.",
+        )
 
     def handle(self, *args, **options):
         try:
@@ -25,16 +31,27 @@ class Command(BaseCommand):
             raise CommandError(f"MongoDB is not reachable. Check MONGODB_URI ({exc.__class__.__name__}).")
 
         User = get_user_model()
-        email = normalize_email(options["email"] or input("Email: "))
-        name = (options["name"] or input("Full name: ")).strip()
-        if not email or not name:
-            raise CommandError("Email and full name are required.")
-        if User.objects.filter(email__iexact=email).exists():
-            raise CommandError("A user with that email already exists.")
+        if options["noinput"]:
+            email = normalize_email(options["email"] or os.environ.get("DJANGO_ADMIN_EMAIL", ""))
+            name = (options["name"] or os.environ.get("DJANGO_ADMIN_NAME", "")).strip()
+            password = os.environ.get("DJANGO_ADMIN_PASSWORD", "")
+            if not (email and name and password):
+                raise CommandError("Set DJANGO_ADMIN_EMAIL, DJANGO_ADMIN_NAME and DJANGO_ADMIN_PASSWORD.")
+            if User.objects.filter(email__iexact=email).exists():
+                self.stdout.write("Admin already exists; nothing to do.")  # safe to leave in a release step
+                return
+        else:
+            email = normalize_email(options["email"] or input("Email: "))
+            name = (options["name"] or input("Full name: ")).strip()
+            if not email or not name:
+                raise CommandError("Email and full name are required.")
+            if User.objects.filter(email__iexact=email).exists():
+                raise CommandError("A user with that email already exists.")
 
-        password = getpass.getpass("Password: ")
-        if password != getpass.getpass("Password (again): "):
-            raise CommandError("Passwords do not match.")
+        if not options["noinput"]:
+            password = getpass.getpass("Password: ")
+            if password != getpass.getpass("Password (again): "):
+                raise CommandError("Passwords do not match.")
         try:
             password_validation.validate_password(password, User(email=email, full_name=name))
         except ValidationError as exc:
