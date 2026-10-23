@@ -1,0 +1,8 @@
+{% with name=request.resolver_match.url_name %}
+<nav class="status-pills" aria-label="Team management">
+  <a class="status-pill{% if name == 'list' or name == 'detail' or name == 'edit' %} is-active{% endif %}" href="{% url 'teams:list' %}">{% icon "users" "icon-sm" %} Team Members</a>
+  <a class="status-pill{% if name == 'create' %} is-active{% endif %}" href="{% url 'teams:create' %}">{% icon "user-plus" "icon-sm" %} Add Member</a>
+  <a class="status-pill{% if name == 'roles' %} is-active{% endif %}" href="{% url 'teams:roles' %}">{% icon "shield" "icon-sm" %} Roles &amp; Permissions</a>
+  <a class="status-pill{% if name == 'access' or name == 'permissions' %} is-active{% endif %}" href="{% url 'teams:access' %}">{% icon "lock" "icon-sm" %} Member Access</a>
+</nav>
+{% endwith %}

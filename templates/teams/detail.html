@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ member.full_name }}{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'teams:list' %}">Team</a>{% icon "chevron-right" "icon-sm" %}<span>{{ member.full_name }}</span></div>
+    <div class="row"><span class="avatar avatar-lg">{{ profile.display_name|default:member.full_name|initials }}</span><div><h1>{{ profile.display_name|default:member.full_name }}</h1><p class="subtitle">{{ member.email }} · {{ profile.role|role_label }} · {{ profile.status|account_badge }}</p></div></div>
+  </div>
+  <div class="page-actions">
+    {% if not is_self %}
+      {% if profile.status == "invited" %}
+        <form method="post" action="{% url 'teams:resend_invite' member.pk %}">{% csrf_token %}<button class="btn btn-secondary" type="submit">{% icon "mail" %} Resend invite</button></form>
+      {% endif %}
+      {% if profile.status == "active" or profile.status == "invited" %}
+        <form method="post" action="{% url 'teams:set_status' member.pk %}" data-confirm="Deactivate {{ member.full_name }}? They lose access immediately. Their content and publication history is kept." data-confirm-title="Deactivate account" data-confirm-label="Deactivate">{% csrf_token %}<input type="hidden" name="status" value="inactive"><button class="btn btn-secondary" type="submit">{% icon "power" %} Deactivate</button></form>
+      {% elif profile.role %}
+        <form method="post" action="{% url 'teams:set_status' member.pk %}">{% csrf_token %}<input type="hidden" name="status" value="active"><button class="btn btn-success" type="submit">{% icon "check" %} Activate</button></form>
+      {% endif %}
+    {% endif %}
+    {% if not is_self %}
+      <form method="post" action="{% url 'teams:remove_access' member.pk %}" data-confirm="Remove all access for {{ member.full_name }}? The account is deactivated and unassigned from every brand and campaign. History is kept." data-confirm-title="Remove access" data-confirm-label="Remove access">{% csrf_token %}<button class="btn btn-secondary" type="submit">{% icon "lock" %} Remove access</button></form>
+      <a class="btn btn-secondary" href="{% url 'teams:permissions' member.pk %}">{% icon "shield" %} Manage permissions</a>
+    {% endif %}
+    <a class="btn btn-primary" href="{% url 'teams:edit' member.pk %}">{% icon "edit" %} Edit &amp; assign</a>
+  </div>
+</div>
+
+{% include "teams/_tabs.html" %}
+
+{% if profile.status == "pending" %}
+<section class="card">
+  <div class="card-header"><h2>Approve registration</h2><span class="badge badge-warning">Pending</span></div>
+  <form method="post" action="{% url 'teams:set_status' member.pk %}" class="card-body row">
+    {% csrf_token %}<input type="hidden" name="status" value="active">
+    <label for="activate-role" class="label">Role</label>
+    <select id="activate-role" name="role" class="w-auto">{% for value, label in role_choices %}<option value="{{ value }}"{% if value == "team_member" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button type="submit" class="btn btn-success">{% icon "check" %} Activate account</button>
+    <span class="help">Reviewers and clients also need brand assignments — use <a href="{% url 'teams:edit' member.pk %}">Edit &amp; assign</a> after activating.</span>
+  </form>
+</section>
+{% endif %}
+
+<div class="mini-stats mt-3">
+  <div class="mini-stat"><div class="stat-label">Drafts</div><div class="stat-value">{{ stats.draft }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Pending</div><div class="stat-value">{{ stats.pending }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Approved</div><div class="stat-value">{{ stats.approved }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Published</div><div class="stat-value">{{ stats.published }}</div></div>
+</div>
+
+<div class="grid grid-2 mt-3">
+  <section class="card">
+    <div class="card-header"><h2>Assigned brands</h2></div>
+    {% if member_brands %}<ul class="list-plain">{% for b in member_brands %}<li><a href="{% url 'brands:detail' b.id %}">{{ b.name }}</a>{{ b.status|status_badge }}</li>{% endfor %}</ul>
+    {% else %}<div class="activity-empty">No brands assigned.</div>{% endif %}
+  </section>
+  <section class="card">
+    <div class="card-header"><h2>Assigned campaigns</h2></div>
+    {% if member_campaigns %}<ul class="list-plain">{% for c in member_campaigns %}<li><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a>{{ c.status|status_badge }}</li>{% endfor %}</ul>
+    {% else %}<div class="activity-empty">No campaigns assigned.</div>{% endif %}
+  </section>
+</div>
+
+<section class="card mt-3">
+  <div class="card-header"><h2>Work history</h2><span class="muted">Last 20 actions</span></div>
+  {% if history %}
+  <ul class="activity-list">{% for h in history %}
+    <li><span class="activity-icon">{% icon "history" %}</span><div class="activity-text"><strong>{{ h.action|audit_label }}</strong><span>{{ h.created_at|date:"M j, Y H:i" }}</span></div></li>
+  {% endfor %}</ul>
+  {% else %}<div class="activity-empty">No activity yet.</div>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Edit publication{% else %}Record publication{% endif %}{% endblock %}
+{% block page_title %}Published Content{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'publications:list' %}">Published Content</a>{% icon "chevron-right" "icon-sm" %}{% if is_edit %}<a href="{% url 'publications:detail' publication.id %}">{{ publication.title|truncatechars:40 }}</a>{% icon "chevron-right" "icon-sm" %}<span>Edit</span>{% else %}<span>Record</span>{% endif %}</div>
+    <h1>{% if is_edit %}Edit publication details{% else %}Record a publication{% endif %}</h1>
+    <p class="subtitle">{% if is_edit %}{{ publication.title }} · version {{ publication.approved_version }}{% else %}Log where approved content went live. This doesn't post anything to external sites.{% endif %}</p>
+  </div>
+</div>
+{% if not is_edit and not has_content %}
+  <div class="card">{% include "includes/empty_state.html" with icon_name="check-circle" title="No approved content waiting" text="Content must be approved before it can be recorded as published." %}</div>
+{% else %}
+<form method="post" class="card" novalidate data-loading-form>
+  {% csrf_token %}
+  <div class="card-body">
+    {% include "includes/form_errors.html" %}
+    <div class="form-grid">
+      {% if form.content_id %}{% include "includes/field.html" with field=form.content_id span=True %}{% endif %}
+      {% include "includes/field.html" with field=form.published_url span=True %}
+      {% include "includes/field.html" with field=form.published_by_user_id %}
+      {% include "includes/field.html" with field=form.published_date %}
+      {% include "includes/field.html" with field=form.notes span=True %}
+    </div>
+  </div>
+  <div class="card-footer form-actions">
+    <a class="btn btn-secondary" href="{% if is_edit %}{% url 'publications:detail' publication.id %}{% else %}{% url 'publications:list' %}{% endif %}">Cancel</a>
+    <button type="submit" class="btn btn-primary">{% if is_edit %}Save changes{% else %}{% icon "globe" %} Record publication{% endif %}</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Content Writing{% endblock %}
+{% block page_title %}Content Writing{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Content Writing</h1><p class="subtitle">Write, edit and submit SEO content for approval.</p></div>
+  <div class="page-actions">
+    {% if can_create %}<a class="btn btn-primary" href="{% url 'content:create' %}">{% icon "plus" %} Create New Content</a>
+    {% else %}<span class="muted small">You need an active campaign assignment to write content.</span>{% endif %}
+  </div>
+</div>
+
+<nav class="status-pills" aria-label="Filter by status">
+  <a class="status-pill{% if not filters.status %} is-active{% endif %}" href="{% url 'content:list' %}">All</a>
+  {% for value, label in status_choices %}
+  <a class="status-pill{% if filters.status == value %} is-active{% endif %}" href="?status={{ value }}">{{ label }} <span class="count">{{ counts|get_item:value }}</span></a>
+  {% endfor %}
+</nav>
+
+<div class="card">
+  <form class="toolbar" method="get" data-auto-submit>
+    {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}">{% endif %}
+    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search content</label><input id="q" type="search" name="q" value="{{ filters.q }}" placeholder="Search by title or keyword" maxlength="100"></div>
+    <label class="sr-only" for="brand">Brand</label>
+    <select id="brand" name="brand"><option value="">All brands</option>{% for value, label in brand_choices %}<option value="{{ value }}"{% if value == filters.brand_id %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="campaign">Campaign</label>
+    <select id="campaign" name="campaign"><option value="">All campaigns</option>{% for value, label in campaign_choices %}<option value="{{ value }}"{% if value == filters.campaign_id %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="type">Content type</label>
+    <select id="type" name="type"><option value="">All types</option>{% for value, label in type_choices %}<option value="{{ value }}"{% if value == filters.content_type %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button class="btn btn-secondary" type="submit">Filter</button>
+    {% if filters.q or filters.brand_id or filters.campaign_id or filters.content_type %}<a class="btn btn-ghost" href="{% url 'content:list' %}{% if filters.status %}?status={{ filters.status }}{% endif %}">Clear</a>{% endif %}
+  </form>
+
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table responsive">
+      <thead><tr><th>Content Title</th><th>Brand</th><th>Campaign</th><th>Keyword</th><th>Type</th><th>Writer</th><th>Status</th><th>Last Updated</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for c in page.items %}
+        <tr>
+          <td class="cell-title"><a href="{% url 'content:detail' c.id %}">{{ c.title }}</a><span class="cell-sub">v{{ c.current_version }} · {{ c.word_count }} words</span></td>
+          <td data-label="Brand">{{ c.brand.name|default:"—" }}</td>
+          <td data-label="Campaign">{{ c.campaign.name|default:"—" }}</td>
+          <td data-label="Keyword">{{ c.keyword }}</td>
+          <td data-label="Type">{{ c.content_type_label }}</td>
+          <td data-label="Writer">{{ c.writer_name }}</td>
+          <td data-label="Status">{{ c.status|status_badge }}</td>
+          <td data-label="Updated" class="nowrap">{{ c.updated_at|date:"M j, Y" }}</td>
+          <td class="actions">
+            <div class="menu" data-menu>
+              <button type="button" class="icon-btn icon-btn-sm" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Actions for {{ c.title }}">{% icon "more-vertical" %}</button>
+              <div class="menu-list" role="menu" hidden>
+                <a class="menu-item" role="menuitem" href="{% url 'content:detail' c.id %}">{% icon "eye" %} View</a>
+                {% if c.status == "draft" or c.status == "needs_edit" %}{% if principal|has_perm:"content.edit" %}{% if principal.is_admin or c.writer_user_id == principal.user_id %}<a class="menu-item" role="menuitem" href="{% url 'content:edit' c.id %}">{% icon "edit" %} {% if c.status == "needs_edit" %}Revise{% else %}Edit draft{% endif %}</a>{% endif %}{% endif %}{% endif %}
+                {% if c.status == "approved" and principal|has_perm:"published.create" %}<a class="menu-item" role="menuitem" href="{% url 'publications:create' %}?content={{ c.id }}">{% icon "globe" %} Record publication</a>{% endif %}
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pagination.html" %}
+  {% elif filters.q or filters.status or filters.brand_id or filters.campaign_id or filters.content_type %}
+    {% include "includes/empty_state.html" with icon_name="search" title="No content matches your filters" text="Try another search or clear the filters." %}
+  {% else %}
+    {% if can_create %}{% url 'content:create' as create_url %}{% endif %}
+    {% include "includes/empty_state.html" with icon_name="pen" title="No content yet" text="Start writing your first piece for one of your campaigns." action_url=create_url action_label="Create New Content" %}
+  {% endif %}
+</div>
+{% endblock %}

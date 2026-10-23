@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Review: {{ item.title }}{% endblock %}
+{% block page_title %}Content Approvals{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'approvals:list' %}">Content Approvals</a>{% icon "chevron-right" "icon-sm" %}<span>{{ item.title|truncatechars:50 }}</span></div>
+    <h1>{{ item.title }}</h1>
+    <div class="kv-inline mt-1">{{ item.status|status_badge }}<span>Revision <strong>{{ item.current_version }}</strong></span><span><strong>{{ item.word_count }}</strong> words</span>{% if item.submitted_at %}<span>Submitted {{ item.submitted_at|date:"M j, Y H:i" }}</span>{% endif %}</div>
+  </div>
+  {% if principal.modules.content %}<div class="page-actions"><a class="btn btn-secondary" href="{% url 'content:detail' item.id %}">{% icon "file-text" %} Open in Content Writing</a></div>{% endif %}
+</div>
+
+<div class="grid grid-main-side">
+  <div>
+    <article class="card">
+      <div class="card-header"><h2>Content</h2><span class="muted">Revision {{ version.version_number }}</span></div>
+      <div class="card-body prose">{{ version.body_html|sanitize_html }}</div>
+    </article>
+
+    {% if can_review %}
+    <section class="card" aria-labelledby="decision-title">
+      <div class="card-header"><h2 id="decision-title">Your decision</h2><span class="muted">Revision {{ item.current_version }}</span></div>
+      <form method="post" class="card-body" novalidate data-loading-form data-decision-form>
+        {% csrf_token %}
+        {{ form.version_number }}
+        {% if form.non_field_errors %}{% include "includes/form_errors.html" %}{% endif %}
+        <div class="field{% if form.feedback.errors %} has-error{% endif %}">
+          <label for="{{ form.feedback.id_for_label }}">Feedback <span class="muted">(required to request changes or reject)</span></label>
+          {{ form.feedback }}
+          {% for e in form.feedback.errors %}<p class="field-error" role="alert">{% icon "alert-circle" "icon-sm" %} {{ e }}</p>{% endfor %}
+        </div>
+        <div class="form-actions is-spaced">
+          {% if "reject" in allowed_actions %}<button type="submit" name="action" value="reject" class="btn btn-secondary" data-requires-feedback data-confirm="Reject this content? It will not be publishable." data-confirm-title="Reject content" data-confirm-label="Reject">{% icon "x-circle" %} Reject</button>{% endif %}
+          {% if "request_changes" in allowed_actions %}<button type="submit" name="action" value="request_changes" class="btn btn-warning" data-requires-feedback>{% icon "rotate-ccw" %} Request Changes</button>{% endif %}
+          {% if "approve" in allowed_actions %}<button type="submit" name="action" value="approve" class="btn btn-success">{% icon "check" %} Approve</button>{% endif %}
+        </div>
+      </form>
+    </section>
+    {% elif self_blocked and item.status == "pending" %}
+      <div class="alert alert-info mt-3">{% icon "info" %}<p>You wrote this content, so someone else needs to review it.</p></div>
+    {% elif item.status != "pending" %}
+      <div class="alert alert-info mt-3">{% icon "info" %}<p>This revision is no longer awaiting review ({{ item.status|status_label }}).</p></div>
+    {% endif %}
+  </div>
+
+  <aside>
+    <section class="card">
+      <div class="card-header"><h2>Details</h2></div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <dt>Brand</dt><dd>{{ item.brand.name|default:"—" }}</dd>
+          <dt>Campaign</dt><dd>{{ item.campaign.name|default:"—" }}</dd>
+          <dt>Keyword</dt><dd><button type="button" class="tag" data-copy="{{ item.keyword }}">{{ item.keyword }} {% icon "copy" %}</button></dd>
+          <dt>Type</dt><dd>{{ item.content_type_label }}</dd>
+          <dt>Writer</dt><dd>{{ item.writer_name }}</dd>
+          <dt>Submitted</dt><dd>{{ item.submitted_at|date:"M j, Y H:i"|default:"—" }}</dd>
+          <dt>Revision</dt><dd>{{ item.current_version }}</dd>
+        </dl>
+        {% if show_internal_notes and version.internal_notes %}<hr><p class="label">Internal notes</p><p class="mb-0 muted">{{ version.internal_notes|linebreaksbr }}</p>{% endif %}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>Approval history</h2></div>
+      <div class="card-body">{% include "includes/approval_history.html" %}</div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

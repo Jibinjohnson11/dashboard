@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Settings</h1><p class="subtitle">Manage your profile and account security.</p></div>
+</div>
+
+<div class="grid grid-main-side">
+  <div>
+    <section class="card" aria-labelledby="profile-heading">
+      <div class="card-header"><h2 id="profile-heading">Profile</h2></div>
+      <form method="post" class="card-body" novalidate data-loading-form>
+        {% csrf_token %}
+        {% include "includes/form_errors.html" with form=profile_form %}
+        <div class="form-grid">
+          {% include "includes/field.html" with field=profile_form.full_name %}
+          <div class="field">
+            <span class="label">Email</span>
+            <input type="email" value="{{ request.user.email }}" disabled aria-label="Email address">
+          </div>
+          <div class="field">
+            <span class="label">Role</span>
+            <input type="text" value="{{ principal.role_label }}" disabled aria-label="Role">
+          </div>
+        </div>
+        <div class="form-actions is-spaced">
+          <button type="submit" name="save_profile" value="1" class="btn btn-primary">Save profile</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" id="password" aria-labelledby="password-heading">
+      <div class="card-header"><h2 id="password-heading">Change password</h2></div>
+      <form method="post" class="card-body" novalidate data-loading-form>
+        {% csrf_token %}
+        {% include "includes/form_errors.html" with form=password_form %}
+        <div class="form-grid">
+          {% include "includes/field.html" with field=password_form.old_password span=True %}
+          {% include "includes/field.html" with field=password_form.new_password1 %}
+          {% include "includes/field.html" with field=password_form.new_password2 %}
+        </div>
+        <div class="form-actions is-spaced">
+          <button type="submit" name="change_password" value="1" class="btn btn-primary">Update password</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <aside>
+    <section class="card">
+      <div class="card-body">
+        <div class="row">
+          <span class="avatar avatar-lg">{{ principal.display_name|initials }}</span>
+          <div><strong>{{ principal.display_name }}</strong><div class="muted small">{{ request.user.email }}</div></div>
+        </div>
+        <hr>
+        <dl class="detail-list">
+          <dt>Role</dt><dd>{{ principal.role_label }}</dd>
+          <dt>Member since</dt><dd>{{ request.user.date_joined|date:"M j, Y" }}</dd>
+          <dt>Last sign-in</dt><dd>{{ request.user.last_login|date:"M j, Y H:i"|default:"—" }}</dd>
+        </dl>
+      </div>
+    </section>
+    {% if principal|has_perm:"team.manage" %}
+    <section class="card">
+      <div class="card-header"><h2>Team Management &amp; Permissions</h2><span class="badge badge-primary">Admin</span></div>
+      <ul class="list-plain">
+        <li><a href="{% url 'teams:list' %}">{% icon "users" "icon-sm" %} Team Members</a></li>
+        <li><a href="{% url 'teams:create' %}">{% icon "user-plus" "icon-sm" %} Add Member</a></li>
+        <li><a href="{% url 'teams:roles' %}">{% icon "shield" "icon-sm" %} Roles &amp; Permissions</a></li>
+        <li><a href="{% url 'teams:access' %}">{% icon "lock" "icon-sm" %} Member Access Management</a></li>
+      </ul>
+    </section>
+    {% endif %}
+    {% if system %}
+    <section class="card">
+      <div class="card-header"><h2>System</h2><span class="badge badge-primary">Admin</span></div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <dt>Environment</dt><dd>{{ system.environment|title }}</dd>
+          <dt>Registration</dt><dd>{{ system.registration_mode }}</dd>
+          <dt>Email backend</dt><dd>{{ system.email_backend }}</dd>
+          <dt>MongoDB</dt><dd>{% if system.mongo_status == "Connected" %}<span class="badge badge-success">Connected</span>{% else %}<span class="badge badge-danger">Unavailable</span>{% endif %}{% if system.mongo_mock %} <span class="badge badge-warning">In-memory</span>{% endif %}</dd>
+          <dt>Session length</dt><dd>{{ system.session_hours }} hours</dd>
+        </dl>
+        <p class="help mt-2">These values come from environment variables. See the README to change them.</p>
+      </div>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

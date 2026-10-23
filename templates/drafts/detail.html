@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }}{% endblock %}
+{% block page_title %}Content Drafts{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'drafts:list' %}">Content Drafts</a>{% icon "chevron-right" "icon-sm" %}<span>{{ item.title|truncatechars:50 }}</span></div>
+    <h1>{{ item.title }}</h1>
+    <div class="kv-inline mt-1">{{ item.status|status_badge }}<span>Revision <strong>{{ item.current_version }}</strong></span><span><strong>{{ item.word_count }}</strong> words</span>{% if item.last_reviewed_at %}<span>Reviewed {{ item.last_reviewed_at|date:"M j, Y H:i" }}</span>{% endif %}</div>
+  </div>
+  <div class="page-actions">
+    {% if can_publish %}<a class="btn btn-primary" href="{% url 'publications:create' %}?content={{ item.id }}">{% icon "globe" %} Record publication</a>{% endif %}
+    {% if can_edit %}<a class="btn btn-primary" href="{% url 'content:edit' item.id %}">{% icon "edit" %} Edit &amp; resubmit</a>{% endif %}
+  </div>
+</div>
+
+{% if latest %}
+<div class="alert {% if item.status == 'approved' %}alert-success{% elif item.status == 'rejected' %}alert-danger{% else %}alert-orange{% endif %}" role="note">
+  {% if item.status == "approved" %}{% icon "check-circle" %}{% elif item.status == "rejected" %}{% icon "x-circle" %}{% else %}{% icon "rotate-ccw" %}{% endif %}
+  <div>
+    <p><strong>{{ latest.action_label }} by {{ latest.reviewer_name }}</strong> <span class="small">({{ latest.reviewer_role|role_label }}) · {{ latest.reviewed_at|date:"M j, Y H:i" }} · Revision {{ latest.version_number }}</span></p>
+    {% if latest.feedback %}<p class="mt-1">{{ latest.feedback|linebreaksbr }}</p>{% endif %}
+    {% if item.status == "rejected" %}<p class="mt-1 small">Rejected content is read-only and cannot be published.</p>
+    {% elif item.status == "approved" %}<p class="mt-1 small">Approved content is locked and ready for the Published Content workflow.</p>
+    {% elif not can_edit %}<p class="mt-1 small">The writer will revise and resubmit this content.</p>{% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="grid grid-main-side">
+  <article class="card">
+    <div class="card-header"><h2>Content</h2><span class="muted">Revision {{ version.version_number }}</span></div>
+    <div class="card-body prose">{% if version.body_html %}{{ version.body_html|sanitize_html }}{% else %}<p class="muted">No content.</p>{% endif %}</div>
+  </article>
+  <aside>
+    <section class="card">
+      <div class="card-header"><h2>Details</h2></div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <dt>Brand</dt><dd>{{ item.brand.name|default:"—" }}</dd>
+          <dt>Campaign</dt><dd>{{ item.campaign.name|default:"—" }}</dd>
+          <dt>Keyword</dt><dd><button type="button" class="tag" data-copy="{{ item.keyword }}">{{ item.keyword }} {% icon "copy" %}</button></dd>
+          <dt>Type</dt><dd>{{ item.content_type_label }}</dd>
+          <dt>Writer</dt><dd>{{ item.writer_name }}</dd>
+          <dt>Submitted</dt><dd>{{ item.submitted_at|date:"M j, Y H:i"|default:"—" }}</dd>
+        </dl>
+        {% if show_internal_notes and version.internal_notes %}<hr><p class="label">Internal notes</p><p class="mb-0 muted">{{ version.internal_notes|linebreaksbr }}</p>{% endif %}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>Approval history</h2></div>
+      <div class="card-body">{% include "includes/approval_history.html" %}</div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

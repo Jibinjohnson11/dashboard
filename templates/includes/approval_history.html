@@ -1,0 +1,12 @@
+{% if history %}
+<ul class="timeline">
+  {% for h in history %}
+  <li>
+    <span class="tl-dot {% if h.action == 'approve' %}success{% elif h.action == 'reject' %}danger{% else %}orange{% endif %}"></span>
+    <div><strong>{{ h.action_label }}</strong> by {{ h.reviewer_name }} <span class="muted small">({{ h.reviewer_role|role_label }})</span></div>
+    <div class="tl-meta">{{ h.reviewed_at|date:"M j, Y H:i" }} · Version {{ h.version_number }}</div>
+    {% if h.feedback %}<div class="tl-feedback">{{ h.feedback }}</div>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}<p class="muted mb-0">No review decisions yet.</p>{% endif %}

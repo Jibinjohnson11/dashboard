@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Permissions · {{ member.full_name }}{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'accounts:settings' %}">Settings</a>{% icon "chevron-right" "icon-sm" %}<a href="{% url 'teams:list' %}">Team Management</a>{% icon "chevron-right" "icon-sm" %}<a href="{% url 'teams:detail' member.pk %}">{{ member.full_name }}</a>{% icon "chevron-right" "icon-sm" %}<span>Permissions</span></div>
+    <h1>Manage permissions</h1>
+    <p class="subtitle">{{ member.full_name }} · {{ member.email }} · {{ profile.status|account_badge }}</p>
+  </div>
+</div>
+{% include "teams/_tabs.html" %}
+
+{% if is_self %}
+  <div class="alert alert-info">{% icon "info" %}<p>You can't change your own role or permissions. Ask another admin.</p></div>
+{% endif %}
+
+<form method="post" class="card" novalidate data-perm-form data-current-role="{{ role }}">
+  {% csrf_token %}
+  <div class="card-header">
+    <div class="row">
+      <label for="perm-role" class="label">Role</label>
+      <select id="perm-role" name="role" class="w-auto" data-perm-role{% if is_self %} disabled{% endif %}>
+        {% for value, label in role_choices %}<option value="{{ value }}"{% if value == role %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="row small">
+      <span class="perm-legend"><span class="perm-tag">Not available</span> outside this role's limits</span>
+      <span class="perm-legend"><span class="perm-tag is-override">Override</span> differs from the role default</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-info" data-admin-note{% if role != "admin" %} hidden{% endif %}>{% icon "shield" %}<p>Admins always have full access to every module and action, so the system can never be locked out.</p></div>
+    {% if has_overrides %}<div class="alert alert-orange" data-overrides-note>{% icon "info" %}<p>This member has individual overrides. <strong>Reset to role defaults</strong> removes them.</p></div>{% endif %}
+    <fieldset class="perm-fieldset"{% if is_self %} disabled{% endif %}>
+      {% include "teams/_permission_editor.html" with show_overrides=True %}
+    </fieldset>
+  </div>
+  {% if not is_self %}
+  <div class="card-footer form-actions">
+    {% if has_overrides %}<button type="submit" name="reset" value="1" class="btn btn-secondary" data-confirm="Remove all individual overrides for {{ member.full_name }} and use the {{ profile.role|role_label }} defaults?" data-confirm-title="Reset to role defaults" data-confirm-label="Reset" data-confirm-tone="primary">{% icon "rotate-ccw" %} Reset to role defaults</button>{% endif %}
+    <span class="spacer"></span>
+    <a class="btn btn-secondary" href="{% url 'teams:detail' member.pk %}">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save changes</button>
+  </div>
+  {% endif %}
+</form>
+{{ editor_config|json_script:"perm-config" }}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/permissions.js' %}" defer></script>{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Registration closed{% endblock %}
+{% block content %}
+  <div class="auth-icon">{% icon "lock" "icon-lg" %}</div>
+  <h1>Invitation only</h1>
+  <p class="lead">Accounts are created by an administrator. Ask your account manager to send you an invitation.</p>
+  <a class="btn btn-primary btn-block" href="{% url 'accounts:login' %}">Back to sign in</a>
+{% endblock %}

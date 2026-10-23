@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} — v{{ version.version_number }}{% endblock %}
+{% block page_title %}Content Writing{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'content:list' %}">Content Writing</a>{% icon "chevron-right" "icon-sm" %}<a href="{% url 'content:detail' item.id %}">{{ item.title|truncatechars:40 }}</a>{% icon "chevron-right" "icon-sm" %}<span>Version {{ version.version_number }}</span></div>
+    <h1>{{ item.title }}</h1>
+    <div class="kv-inline mt-1"><span>Version <strong>{{ version.version_number }}</strong>{% if version.version_number == item.current_version %} (current){% endif %}</span><span><strong>{{ version.word_count }}</strong> words</span><span>Created {{ version.created_at|date:"M j, Y H:i" }}</span>{% if version.submitted_at %}<span>Submitted {{ version.submitted_at|date:"M j, Y H:i" }}</span>{% endif %}</div>
+  </div>
+  <div class="page-actions"><a class="btn btn-secondary" href="{% url 'content:detail' item.id %}">{% icon "chevron-left" %} Back</a></div>
+</div>
+<article class="card"><div class="card-body prose">{{ version.body_html|sanitize_html|default:"<p class='muted'>Empty.</p>" }}</div></article>
+{% endblock %}

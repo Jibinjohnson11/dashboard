@@ -1,0 +1,60 @@
+/* ==========================================================================
+   Dashboard: summary cards, charts and activity feed
+   ========================================================================== */
+
+.stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+.stat-card {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 18px 18px 16px; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow); color: inherit; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+a.stat-card:hover { text-decoration: none; border-color: #bfdbfe; box-shadow: 0 6px 18px rgba(37, 99, 235, 0.08); transform: translateY(-1px); }
+.stat-label { color: var(--muted); font-size: 0.8125rem; font-weight: 500; }
+.stat-value { margin-top: 6px; font-size: 1.75rem; font-weight: 700; color: var(--navy); letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-icon { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex: none; }
+.stat-icon.blue { background: var(--primary-soft); color: var(--primary); }
+.stat-icon.green { background: var(--success-soft); color: var(--success); }
+.stat-icon.orange { background: var(--warning-soft); color: var(--warning-text); }
+.stat-icon.red { background: var(--danger-soft); color: var(--danger); }
+.stat-icon.navy { background: #eef2f7; color: var(--navy); }
+.stat-icon.violet { background: #f5f3ff; color: #6d28d9; }
+
+.mini-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.mini-stat { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+.mini-stat .stat-value { font-size: 1.35rem; margin-top: 2px; }
+
+.chart-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 20px; margin-bottom: 20px; }
+.chart-box { position: relative; height: 280px; padding: 16px 20px 20px; }
+.chart-box.is-tall { height: 300px; }
+.chart-box canvas { width: 100% !important; height: 100% !important; }
+.chart-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+
+.activity-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.activity-list { list-style: none; margin: 0; padding: 6px 0; }
+.activity-list li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 20px; }
+.activity-list li + li { border-top: 1px solid var(--border); }
+.activity-icon { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; background: var(--surface-2); color: var(--muted); }
+.activity-icon .icon { width: 15px; height: 15px; }
+.activity-icon.blue { background: var(--primary-soft); color: var(--primary); }
+.activity-icon.green { background: var(--success-soft); color: var(--success); }
+.activity-icon.orange { background: var(--warning-soft); color: var(--warning-text); }
+.activity-icon.red { background: var(--danger-soft); color: var(--danger); }
+.activity-text { min-width: 0; flex: 1; }
+.activity-text a, .activity-text strong { display: block; color: var(--navy); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-text a:hover { color: var(--primary); }
+.activity-text span { color: var(--muted); font-size: 0.8125rem; }
+.activity-empty { padding: 22px 20px; color: var(--muted); text-align: center; }
+
+.welcome { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+.status-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: #fff; color: var(--text-2); font-weight: 500;
+}
+.status-pill:hover { text-decoration: none; border-color: #bfdbfe; color: var(--primary); }
+.status-pill.is-active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.status-pill .count { min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--surface-2); color: var(--text-2); font-size: 0.75rem; font-weight: 700; display: grid; place-items: center; }
+.status-pill.is-active .count { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+.search-group + .search-group { margin-top: 20px; }

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Published Content{% endblock %}
+{% block page_title %}Published Content{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Published Content</h1><p class="subtitle">Track where approved content and backlinks went live.</p></div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{% url 'publications:export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">{% icon "download" %} Export CSV</a>
+    {% if can_publish %}<a class="btn btn-primary" href="{% url 'publications:create' %}">{% icon "plus" %} Record Publication</a>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <form class="toolbar" method="get" data-auto-submit>
+    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search</label><input id="q" type="search" name="q" value="{{ filters.q }}" placeholder="Search title, keyword or URL" maxlength="100"></div>
+    <label class="sr-only" for="brand">Brand</label>
+    <select id="brand" name="brand"><option value="">All brands</option>{% for value, label in brand_choices %}<option value="{{ value }}"{% if value == filters.brand_id %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="campaign">Campaign</label>
+    <select id="campaign" name="campaign"><option value="">All campaigns</option>{% for value, label in campaign_choices %}<option value="{{ value }}"{% if value == filters.campaign_id %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="date_from">From</label><input id="date_from" type="date" name="date_from" value="{{ filters.date_from|date:'Y-m-d' }}" class="w-auto" title="From date">
+    <label class="sr-only" for="date_to">To</label><input id="date_to" type="date" name="date_to" value="{{ filters.date_to|date:'Y-m-d' }}" class="w-auto" title="To date">
+    <button class="btn btn-secondary" type="submit">Filter</button>
+    {% if request.GET %}<a class="btn btn-ghost" href="{% url 'publications:list' %}">Clear</a>{% endif %}
+  </form>
+
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table responsive">
+      <thead><tr><th>Content Title</th><th>Brand</th><th>Campaign</th><th>Keyword</th><th>Type</th><th>Published URL</th><th>Published By</th><th>Date</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for p in page.items %}
+        <tr>
+          <td class="cell-title"><a href="{% url 'publications:detail' p.id %}">{{ p.title }}</a><span class="cell-sub">Version {{ p.approved_version }}</span></td>
+          <td data-label="Brand">{{ p.brand.name|default:"—" }}</td>
+          <td data-label="Campaign">{{ p.campaign.name|default:"—" }}</td>
+          <td data-label="Keyword">{{ p.keyword }}</td>
+          <td data-label="Type">{{ p.content_type_label }}</td>
+          <td data-label="URL"><span class="copy-line"><a href="{{ p.published_url }}" target="_blank" rel="noopener noreferrer nofollow" title="{{ p.published_url }}">{{ p.published_url|cut:"https://"|cut:"http://"|truncatechars:30 }}</a>{% include "includes/copy_button.html" with value=p.published_url label="publication URL" %}</span></td>
+          <td data-label="Published By">{{ p.published_by_name }}</td>
+          <td data-label="Date" class="nowrap">{{ p.published_at|date:"M j, Y" }}</td>
+          <td data-label="Status"><span class="badge badge-primary">Published</span></td>
+          <td class="actions">
+            <div class="menu" data-menu>
+              <button type="button" class="icon-btn icon-btn-sm" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Actions for {{ p.title }}">{% icon "more-vertical" %}</button>
+              <div class="menu-list" role="menu" hidden>
+                <a class="menu-item" role="menuitem" href="{% url 'publications:detail' p.id %}">{% icon "eye" %} View content</a>
+                <a class="menu-item" role="menuitem" href="{{ p.published_url }}" target="_blank" rel="noopener noreferrer nofollow">{% icon "external-link" %} Open URL</a>
+                <button type="button" class="menu-item" role="menuitem" data-copy="{{ p.published_url }}">{% icon "copy" %} Copy URL</button>
+                {% if p.can_edit %}<a class="menu-item" role="menuitem" href="{% url 'publications:edit' p.id %}">{% icon "edit" %} Edit details</a>{% endif %}
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pagination.html" %}
+  {% elif request.GET.q or request.GET.brand or request.GET.campaign or request.GET.date_from or request.GET.date_to %}
+    {% include "includes/empty_state.html" with icon_name="search" title="No publications match your filters" text="Try a different search or date range." %}
+  {% else %}
+    {% if can_publish %}{% url 'publications:create' as create_url %}{% endif %}
+    {% include "includes/empty_state.html" with icon_name="globe" title="Nothing published yet" text="Once content is approved, record where it went live to track your backlinks." action_url=create_url action_label="Record Publication" %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Account pending{% endblock %}
+{% block content %}
+  <div class="auth-icon warning">{% icon "clock" "icon-lg" %}</div>
+  <h1>Your account isn't active yet</h1>
+  <p class="lead">An administrator needs to activate your account and assign your role before you can use the dashboard.</p>
+  <form method="post" action="{% url 'accounts:logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-secondary btn-block">{% icon "log-out" %} Sign out</button>
+  </form>
+{% endblock %}

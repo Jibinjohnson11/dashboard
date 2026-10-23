@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if is_edit %}Edit {{ member.full_name }}{% else %}Add Team Member{% endif %}{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'teams:list' %}">Team</a>{% icon "chevron-right" "icon-sm" %}{% if is_edit %}<a href="{% url 'teams:detail' member.pk %}">{{ member.full_name }}</a>{% icon "chevron-right" "icon-sm" %}<span>Edit</span>{% else %}<span>Add</span>{% endif %}</div>
+    <h1>{% if is_edit %}Edit team member{% else %}Add team member{% endif %}</h1>
+    {% if not is_edit %}<p class="subtitle">We'll email them a secure link to set their own password. Passwords are never sent by email. Module access starts from the role defaults; adjust it afterwards under <strong>Manage permissions</strong>.</p>{% endif %}
+  </div>
+</div>
+{% include "teams/_tabs.html" %}
+<form method="post" class="card" novalidate data-loading-form>
+  {% csrf_token %}
+  <div class="card-body">
+    {% include "includes/form_errors.html" %}
+    {% if is_edit and profile.status == "pending" %}<div class="alert alert-info">{% icon "info" %}<p>This person registered publicly. Choose a role and set the status to Active to approve the account.</p></div>{% endif %}
+    <div class="form-grid">
+      {% include "includes/field.html" with field=form.full_name %}
+      {% include "includes/field.html" with field=form.email %}
+      {% include "includes/field.html" with field=form.role %}
+      {% include "includes/field.html" with field=form.status %}
+      <div class="span-2"><div class="alert alert-info mb-0" data-role-hint>{% icon "info" %}<p><strong>Admin</strong>: full access. <strong>Team Member</strong>: writes content for assigned campaigns. <strong>Reviewer</strong>: approves content for assigned brands. <strong>Client</strong>: reviews and approves their own brands' content only.</p></div></div>
+      {% include "includes/field.html" with field=form.brand_ids span=True %}
+      <div class="span-2" data-campaign-field>{% include "includes/field.html" with field=form.campaign_ids %}</div>
+    </div>
+  </div>
+  <div class="card-footer form-actions">
+    <a class="btn btn-secondary" href="{% if is_edit %}{% url 'teams:detail' member.pk %}{% else %}{% url 'teams:list' %}{% endif %}">Cancel</a>
+    <button type="submit" class="btn btn-primary">{% if is_edit %}Save changes{% else %}Add &amp; send invite{% endif %}</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/teams.js' %}" defer></script>{% endblock %}

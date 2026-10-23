@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if is_edit %}Edit {{ item.title }}{% else %}Create New Content{% endif %}{% endblock %}
+{% block page_title %}Content Writing{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'content:list' %}">Content Writing</a>{% icon "chevron-right" "icon-sm" %}{% if is_edit %}<a href="{% url 'content:detail' item.id %}">{{ item.title|truncatechars:40 }}</a>{% icon "chevron-right" "icon-sm" %}<span>Edit</span>{% else %}<span>New</span>{% endif %}</div>
+    <h1>{% if is_edit %}Edit content{% else %}Create new content{% endif %}</h1>
+    {% if is_edit %}<p class="subtitle">{{ item.status|status_badge }} · Version {{ item.current_version }}{% if version.locked %} — saving will create version {{ item.current_version|add:1 }}{% endif %}</p>{% endif %}
+  </div>
+</div>
+
+{% if not has_campaigns %}
+  <div class="card">{% include "includes/empty_state.html" with icon_name="target" title="No campaigns available" text="You need to be assigned to an active campaign before you can write content. Ask an administrator to assign you." %}</div>
+{% else %}
+
+{% for f in feedback %}
+<div class="alert alert-orange" role="note">{% icon "rotate-ccw" %}<div><p><strong>Changes requested by {{ f.reviewer_name }}</strong> · {{ f.reviewed_at|date:"M j, Y H:i" }}</p><p class="mt-1">{{ f.feedback|linebreaksbr }}</p></div></div>
+{% endfor %}
+
+<form method="post" novalidate data-loading-form data-content-form>
+  {% csrf_token %}
+  {{ form.edit_seq }}
+  {% include "includes/form_errors.html" %}
+  <div class="grid grid-main-side">
+    <div class="card">
+      <div class="card-body stack">
+        {% include "includes/field.html" with field=form.title %}
+        <div class="field{% if form.body_html.errors %} has-error{% endif %}">
+          <span class="label" id="editor-label">Content body</span>
+          <div class="editor" data-editor hidden>
+            <div class="editor-toolbar" role="toolbar" aria-label="Formatting">
+              <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="p" title="Paragraph" aria-label="Paragraph">P</button>
+              <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="h2" title="Heading 2" aria-label="Heading 2">H2</button>
+              <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="h3" title="Heading 3" aria-label="Heading 3">H3</button>
+              <span class="sep" aria-hidden="true"></span>
+              <button type="button" class="editor-btn" data-cmd="bold" title="Bold (Ctrl+B)" aria-label="Bold">{% icon "bold" "icon-sm" %}</button>
+              <button type="button" class="editor-btn" data-cmd="italic" title="Italic (Ctrl+I)" aria-label="Italic">{% icon "italic" "icon-sm" %}</button>
+              <button type="button" class="editor-btn" data-cmd="underline" title="Underline (Ctrl+U)" aria-label="Underline">{% icon "underline" "icon-sm" %}</button>
+              <span class="sep" aria-hidden="true"></span>
+              <button type="button" class="editor-btn" data-cmd="insertUnorderedList" title="Bulleted list" aria-label="Bulleted list">{% icon "list" "icon-sm" %}</button>
+              <button type="button" class="editor-btn" data-cmd="insertOrderedList" title="Numbered list" aria-label="Numbered list">{% icon "list-ordered" "icon-sm" %}</button>
+              <button type="button" class="editor-btn" data-cmd="formatBlock" data-value="blockquote" title="Quote" aria-label="Quote">{% icon "quote" "icon-sm" %}</button>
+              <span class="sep" aria-hidden="true"></span>
+              <button type="button" class="editor-btn" data-cmd="createLink" title="Insert link" aria-label="Insert link">{% icon "link" "icon-sm" %}</button>
+              <button type="button" class="editor-btn" data-cmd="unlink" title="Remove link" aria-label="Remove link">{% icon "unlink" "icon-sm" %}</button>
+              <button type="button" class="editor-btn" data-cmd="removeFormat" title="Clear formatting" aria-label="Clear formatting">{% icon "remove-formatting" "icon-sm" %}</button>
+            </div>
+            <div class="editor-area prose" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="editor-label" data-editor-area data-placeholder="Start writing your content…"></div>
+            <div class="editor-footer"><span data-word-count>0 words</span><span>Formatting is cleaned on save for security.</span></div>
+          </div>
+          {{ form.body_html }}
+          {% for e in form.body_html.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <aside class="stack">
+      <div class="card">
+        <div class="card-header"><h2>Details</h2></div>
+        <div class="card-body stack">
+          {% include "includes/field.html" with field=form.brand_id %}
+          {% include "includes/field.html" with field=form.campaign_id %}
+          {% include "includes/field.html" with field=form.keyword %}
+          {% include "includes/field.html" with field=form.content_type %}
+          {% if form.writer_user_id %}{% include "includes/field.html" with field=form.writer_user_id %}{% else %}
+          <div class="field"><span class="label">Writer</span><input type="text" value="{{ principal.display_name }}" disabled aria-label="Writer"></div>{% endif %}
+          {% include "includes/field.html" with field=form.internal_notes %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body stack">
+          <button type="submit" name="action" value="submit" class="btn btn-primary btn-block" data-confirm="Submit this content for approval? You won't be able to edit it while it is being reviewed." data-confirm-title="Submit for approval" data-confirm-label="Submit" data-confirm-tone="primary">{% icon "send" %} Submit for Approval</button>
+          <button type="submit" name="action" value="save" class="btn btn-secondary btn-block">{% icon "file-text" %} Save Draft</button>
+          <a class="btn btn-ghost btn-block" href="{% if is_edit %}{% url 'content:detail' item.id %}{% else %}{% url 'content:list' %}{% endif %}">Cancel</a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/content.js' %}" defer></script>{% endblock %}

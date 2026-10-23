@@ -1,0 +1,8 @@
+Hello {{ user.full_name }},
+
+{{ inviter_name }} has invited you to the SEO Management Dashboard.
+
+Set up your account and choose your password here:
+{{ invite_url }}
+
+This link expires in {{ valid_hours }} hours and can be used once. If you weren't expecting this invitation, you can ignore this email.

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ brand.name }}{% endblock %}
+{% block page_title %}Brands{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'brands:list' %}">Brands</a>{% icon "chevron-right" "icon-sm" %}<span>{{ brand.name }}</span></div>
+    <h1>{{ brand.name }} {{ brand.status|status_badge }}</h1>
+    {% if brand.description %}<p class="subtitle">{{ brand.description|truncatechars:180 }}</p>{% endif %}
+  </div>
+  {% if principal.is_admin %}
+  <div class="page-actions">
+    {% if brand.status == "archived" %}
+      <form method="post" action="{% url 'brands:restore' brand.id %}">{% csrf_token %}<button class="btn btn-secondary" type="submit">{% icon "rotate-ccw" %} Restore</button></form>
+    {% else %}
+      <form method="post" action="{% url 'brands:archive' brand.id %}" data-confirm="Archive “{{ brand.name }}”? Its campaigns and content history are kept and it can be restored later." data-confirm-title="Archive brand" data-confirm-label="Archive">{% csrf_token %}<button class="btn btn-secondary" type="submit">{% icon "archive" %} Archive</button></form>
+      <a class="btn btn-secondary" href="{% url 'brands:edit' brand.id %}">{% icon "edit" %} Edit</a>
+      <a class="btn btn-primary" href="{% url 'campaigns:create' %}?brand={{ brand.id }}">{% icon "plus" %} New Campaign</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="mini-stats">
+  <div class="mini-stat"><div class="stat-label">Campaigns</div><div class="stat-value">{{ campaigns|length }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Total Content</div><div class="stat-value">{{ content_total }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Pending Approvals</div><div class="stat-value">{{ pending_total }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Published</div><div class="stat-value">{{ published_total }}</div></div>
+</div>
+
+<div class="grid grid-main-side mt-3">
+  <div>
+    {% if principal.modules.campaigns %}
+    <section class="card">
+      <div class="card-header"><h2>Campaigns</h2><span class="muted">{{ campaigns|length }} total</span></div>
+      {% if campaigns %}
+      <div class="table-wrap"><table class="table responsive">
+        <thead><tr><th>Campaign</th><th>Primary Keyword</th><th>Team</th><th>Status</th></tr></thead>
+        <tbody>{% for c in campaigns %}
+          <tr><td class="cell-title"><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a></td>
+          <td data-label="Keyword">{{ c.primary_keyword }}</td><td data-label="Team">{{ c.assigned_user_ids|length }}</td><td data-label="Status">{{ c.status|status_badge }}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% else %}
+        {% if principal.is_admin and brand.status != "archived" %}{% url 'campaigns:create' as new_campaign %}{% endif %}
+        {% include "includes/empty_state.html" with icon_name="target" title="No campaigns yet" text="Campaigns group the keywords and content you produce for this brand." action_url=new_campaign action_label="New Campaign" %}
+      {% endif %}
+    </section>
+    {% endif %}
+    <section class="card">
+      <div class="card-header"><h2>Assigned team</h2></div>
+      {% if members %}
+      <ul class="list-plain">{% for m in members %}
+        <li><span class="row"><span class="avatar">{{ m.name|initials }}</span>{% if principal.is_admin %}<a href="{% url 'teams:detail' m.user_id %}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</span><span class="muted small">{{ m.role|role_label }}</span></li>
+      {% endfor %}</ul>
+      {% else %}<div class="activity-empty">No team members are assigned to this brand yet.</div>{% endif %}
+    </section>
+  </div>
+  <aside>
+    <section class="card">
+      <div class="card-header"><h2>Brand information</h2></div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <dt>Website</dt><dd>{% if brand.website %}<span class="copy-line"><a href="{{ brand.website }}" target="_blank" rel="noopener noreferrer nofollow">{{ brand.website }}</a>{% include "includes/copy_button.html" with value=brand.website label="website" %}</span>{% else %}—{% endif %}</dd>
+          <dt>Industry</dt><dd>{{ brand.industry|default:"—" }}</dd>
+          <dt>Contact</dt><dd>{{ brand.contact_name|default:"—" }}</dd>
+          <dt>Email</dt><dd>{% if brand.contact_email %}<a href="mailto:{{ brand.contact_email }}">{{ brand.contact_email }}</a>{% else %}—{% endif %}</dd>
+          <dt>Phone</dt><dd>{{ brand.contact_phone|default:"—" }}</dd>
+          <dt>Created</dt><dd>{{ brand.created_at|date:"M j, Y" }}</dd>
+          {% if brand.archived_at %}<dt>Archived</dt><dd>{{ brand.archived_at|date:"M j, Y" }}</dd>{% endif %}
+        </dl>
+        {% if brand.description %}<hr><p class="mb-0">{{ brand.description|linebreaksbr }}</p>{% endif %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

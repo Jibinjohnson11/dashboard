@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Team{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'accounts:settings' %}">Settings</a>{% icon "chevron-right" "icon-sm" %}<span>Team Management &amp; Permissions</span></div>
+    <h1>Team Management &amp; Permissions</h1><p class="subtitle">Manage team members, reviewers and client logins, their roles and what they can access.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'teams:create' %}">{% icon "user-plus" %} Add Team Member</a></div>
+</div>
+
+{% include "teams/_tabs.html" %}
+
+{% if pending_count and status != "pending" %}
+<div class="alert alert-warning">{% icon "clock" %}<p>{{ pending_count }} new account{{ pending_count|pluralize }} waiting for activation. <a href="?status=pending">Review now</a></p></div>
+{% endif %}
+
+<div class="card">
+  <form class="toolbar" method="get" data-auto-submit>
+    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search team</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name or email" maxlength="100"></div>
+    <label class="sr-only" for="role">Role</label>
+    <select id="role" name="role"><option value="">All roles</option>{% for value, label in role_choices %}<option value="{{ value }}"{% if value == role %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="status">Status</label>
+    <select id="status" name="status"><option value="">All statuses</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button class="btn btn-secondary" type="submit">Filter</button>
+    {% if q or role or status %}<a class="btn btn-ghost" href="{% url 'teams:list' %}">Clear</a>{% endif %}
+  </form>
+
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table responsive">
+      <thead><tr><th>Member Name</th><th>Email</th><th>Role</th><th>Account Status</th><th>Accessible Modules</th><th>Campaigns</th><th>Last Login</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for m in page.items %}
+        <tr>
+          <td class="cell-title"><span class="row"><span class="avatar">{{ m.display_name|initials }}</span><a href="{% url 'teams:detail' m.django_user_id %}">{{ m.display_name|default:m.email }}</a></span></td>
+          <td data-label="Email">{{ m.email }}</td>
+          <td data-label="Role">{{ m.role|role_label }}</td>
+          <td data-label="Status">{{ m.status|account_badge }}</td>
+          <td data-label="Modules">{% if m.modules %}<span class="module-chips" title="{{ m.modules|join:', ' }}">{% for label in m.modules %}<span class="tag">{{ label }}</span>{% endfor %}</span>{% if m.has_overrides %} <span class="perm-tag is-override">Overrides</span>{% endif %}{% else %}<span class="muted">No access</span>{% endif %}</td>
+          <td data-label="Campaigns">{{ m.campaign_count }}</td>
+          <td data-label="Last Login" class="nowrap">{{ m.last_login|date:"M j, Y"|default:"Never" }}</td>
+          <td class="actions">
+            <div class="menu" data-menu>
+              <button type="button" class="icon-btn icon-btn-sm" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Actions for {{ m.display_name }}">{% icon "more-vertical" %}</button>
+              <div class="menu-list" role="menu" hidden>
+                <a class="menu-item" role="menuitem" href="{% url 'teams:detail' m.django_user_id %}">{% icon "eye" %} View profile</a>
+                <a class="menu-item" role="menuitem" href="{% url 'teams:edit' m.django_user_id %}">{% icon "edit" %} Edit &amp; assign</a>
+                {% if m.django_user_id != principal.user_id %}<a class="menu-item" role="menuitem" href="{% url 'teams:permissions' m.django_user_id %}">{% icon "shield" %} Change role &amp; permissions</a>{% endif %}
+                {% if m.django_user_id != principal.user_id %}
+                  {% if m.status == "active" or m.status == "invited" %}
+                  <div class="menu-sep"></div>
+                  <form method="post" action="{% url 'teams:set_status' m.django_user_id %}" data-confirm="Deactivate {{ m.display_name }}? They will be signed out and lose access. Their content history is kept." data-confirm-title="Deactivate account" data-confirm-label="Deactivate">
+                    {% csrf_token %}<input type="hidden" name="status" value="inactive"><button type="submit" class="menu-item is-danger" role="menuitem">{% icon "power" %} Deactivate</button>
+                  </form>
+                  {% elif m.status == "inactive" and m.role %}
+                  <form method="post" action="{% url 'teams:set_status' m.django_user_id %}">
+                    {% csrf_token %}<input type="hidden" name="status" value="active"><button type="submit" class="menu-item" role="menuitem">{% icon "check" %} Activate</button>
+                  </form>
+                  {% endif %}
+                  <form method="post" action="{% url 'teams:remove_access' m.django_user_id %}" data-confirm="Remove all access for {{ m.display_name }}? The account is deactivated and unassigned from every brand and campaign. Their content, approvals and publications are kept." data-confirm-title="Remove access" data-confirm-label="Remove access">
+                    {% csrf_token %}<button type="submit" class="menu-item is-danger" role="menuitem">{% icon "lock" %} Remove access</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pagination.html" %}
+  {% else %}
+    {% include "includes/empty_state.html" with icon_name="users" title="No team members found" text="Try different filters, or add your first team member." %}
+  {% endif %}
+</div>
+{% endblock %}

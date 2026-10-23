@@ -1,0 +1,18 @@
+{# Renders one bound form field with label, help text and errors. Pass span=True to span two columns. #}
+<div class="field{% if field.errors %} has-error{% endif %}{% if span %} span-2{% endif %}{% if field.field.widget.input_type == 'checkbox' and not field.field.widget.allow_multiple_selected %} field-check{% endif %}">
+  {% if field.field.widget.allow_multiple_selected and field.field.widget.input_type == "checkbox" %}
+    <span class="label" id="{{ field.auto_id }}_label">{{ field.label }}{% if field.field.required %}<span class="required" aria-hidden="true">*</span>{% endif %}</span>
+    <div class="choice-list" role="group" aria-labelledby="{{ field.auto_id }}_label">
+      {% if field.field.choices|length > 8 %}<input type="search" class="choice-filter" placeholder="Filter…" aria-label="Filter {{ field.label|lower }}" data-choice-filter>{% endif %}
+      {{ field }}
+    </div>
+    {% if not field.field.choices %}<p class="help">Nothing available to assign yet.</p>{% endif %}
+  {% elif field.field.widget.input_type == "checkbox" %}
+    <label class="checkbox">{{ field }} {{ field.label }}</label>
+  {% else %}
+    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="required" aria-hidden="true">*</span>{% endif %}</label>
+    {{ field }}
+  {% endif %}
+  {% if field.help_text %}<p class="help" id="{{ field.auto_id }}_help">{{ field.help_text }}</p>{% endif %}
+  {% for error in field.errors %}<p class="field-error" role="alert">{% icon "alert-circle" "icon-sm" %} {{ error }}</p>{% endfor %}
+</div>

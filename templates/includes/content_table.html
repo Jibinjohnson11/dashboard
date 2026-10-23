@@ -1,0 +1,15 @@
+{# Compact content table used on campaign detail. Expects `items`. #}
+{% if items %}
+<div class="table-wrap"><table class="table responsive">
+  <thead><tr><th>Title</th><th>Type</th><th>Writer</th><th>Status</th><th>Updated</th></tr></thead>
+  <tbody>{% for c in items %}
+    <tr>
+      <td class="cell-title"><a href="{% if principal.modules.content %}{% url 'content:detail' c.id %}{% else %}{% url 'approvals:review' c.id %}{% endif %}">{{ c.title }}</a></td>
+      <td data-label="Type">{{ c.content_type|status_label }}</td>
+      <td data-label="Writer">{{ c.writer_name }}</td>
+      <td data-label="Status">{{ c.status|status_badge }}</td>
+      <td data-label="Updated" class="nowrap">{{ c.updated_at|date:"M j, Y" }}</td>
+    </tr>
+  {% endfor %}</tbody>
+</table></div>
+{% else %}<div class="activity-empty">{{ empty|default:"Nothing here yet." }}</div>{% endif %}

@@ -1,0 +1,25 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}Sign in{% endblock %} · SEO Management Dashboard</title>
+  <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+</head>
+<body class="auth-body">
+{% include "includes/icons.html" %}
+<main class="auth-shell">
+  <a class="auth-brand" href="{% url 'accounts:login' %}"><span class="brand-mark">{% icon "trending-up" %}</span> SEO Management Dashboard</a>
+  {% include "includes/messages.html" %}
+  <div class="auth-card">
+    {% block content %}{% endblock %}
+  </div>
+  {% block below %}{% endblock %}
+</main>
+<script src="{% static 'js/main.js' %}" defer></script>
+</body>
+</html>

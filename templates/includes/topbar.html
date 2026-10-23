@@ -1,0 +1,45 @@
+<header class="topbar">
+  <button type="button" class="icon-btn drawer-toggle" data-drawer-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">{% icon "menu" %}</button>
+  <button type="button" class="icon-btn sidebar-collapse" data-sidebar-collapse aria-label="Collapse sidebar" aria-pressed="false" title="Collapse sidebar">{% icon "panel-left" %}</button>
+  <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+
+  <form class="topbar-search" role="search" method="get" action="{% url 'dashboard:search' %}">
+    {% icon "search" "icon-sm" %}
+    <label class="sr-only" for="global-search">Search</label>
+    <input id="global-search" type="search" name="q" placeholder="Search brands, campaigns, content…" value="{{ request.GET.q|default:''|truncatechars:100 }}" maxlength="100" autocomplete="off">
+  </form>
+
+  <div class="topbar-actions">
+    <div class="menu" data-menu>
+      <button type="button" class="icon-btn" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Notifications{% if notifications.count %} ({{ notifications.count }}){% endif %}">
+        {% icon "bell" %}{% if notifications.count %}<span class="dot">{{ notifications.count }}</span>{% endif %}
+      </button>
+      <div class="menu-list notif-list" role="menu" hidden>
+        <div class="menu-header"><strong>Notifications</strong><span>Things that need your attention</span></div>
+        {% for n in notifications.items %}
+          <a class="menu-item" role="menuitem" href="{% url n.url_name %}{{ n.query|default:'' }}">{% icon "info" %} {{ n.label }}</a>
+        {% empty %}
+          <div class="menu-empty">You're all caught up.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="menu" data-menu>
+      <button type="button" class="user-btn" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Account menu">
+        <span class="avatar" aria-hidden="true">{{ principal.display_name|initials }}</span>
+        <span class="user-meta"><strong>{{ principal.display_name|truncatechars:24 }}</strong><span>{{ principal.role_label }}</span></span>
+        {% icon "chevron-down" "icon-sm" %}
+      </button>
+      <div class="menu-list" role="menu" hidden>
+        <div class="menu-header"><strong>{{ principal.display_name }}</strong><span>{{ request.user.email }}</span></div>
+        <a class="menu-item" role="menuitem" href="{% url 'accounts:settings' %}">{% icon "user" %} Profile</a>
+        <a class="menu-item" role="menuitem" href="{% url 'accounts:settings' %}#password">{% icon "settings" %} Account settings</a>
+        <div class="menu-sep"></div>
+        <form method="post" action="{% url 'accounts:logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="menu-item is-danger" role="menuitem">{% icon "log-out" %} Logout</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</header>

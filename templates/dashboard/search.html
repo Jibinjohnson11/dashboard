@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block page_title %}Search{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Search</h1><p class="subtitle">{% if q %}{{ total }} result{{ total|pluralize }} for “{{ q }}”{% else %}Search brands, campaigns, content and publications.{% endif %}</p></div>
+</div>
+<form class="card toolbar" method="get" role="search">
+  <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="search-q">Search</label><input id="search-q" type="search" name="q" value="{{ q }}" maxlength="100" placeholder="Search…" autofocus></div>
+  <button class="btn btn-primary" type="submit">Search</button>
+</form>
+
+{% if results %}
+  {% if not total %}
+    <div class="card mt-3">{% include "includes/empty_state.html" with icon_name="search" title="No matches" text="Try a different keyword, brand or title." %}</div>
+  {% endif %}
+  {% if results.brands %}
+  <section class="card mt-3"><div class="card-header"><h2>Brands</h2></div>
+    <ul class="list-plain">{% for b in results.brands %}<li><a href="{% url 'brands:detail' b.id %}">{{ b.name }}</a>{{ b.status|status_badge }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  {% if results.campaigns %}
+  <section class="card"><div class="card-header"><h2>Campaigns</h2></div>
+    <ul class="list-plain">{% for c in results.campaigns %}<li><span><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a> <span class="muted small">· {{ c.primary_keyword }}</span></span>{{ c.status|status_badge }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  {% if results.content %}
+  <section class="card"><div class="card-header"><h2>Content</h2></div>
+    <ul class="list-plain">{% for c in results.content %}<li><span><a href="{% if principal.modules.content %}{% url 'content:detail' c.id %}{% else %}{% url 'approvals:review' c.id %}{% endif %}">{{ c.title }}</a> <span class="muted small">· {{ c.brand.name|default:"" }}</span></span>{{ c.status|status_badge }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  {% if results.publications %}
+  <section class="card"><div class="card-header"><h2>Published content</h2></div>
+    <ul class="list-plain">{% for p in results.publications %}<li><a href="{% url 'publications:detail' p.id %}">{{ p.title }}</a><span class="muted small">{{ p.published_at|date:"M j, Y" }}</span></li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

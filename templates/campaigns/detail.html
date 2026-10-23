@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }}{% endblock %}
+{% block page_title %}Campaigns{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'campaigns:list' %}">Campaigns</a>{% icon "chevron-right" "icon-sm" %}<span>{{ campaign.name }}</span></div>
+    <h1>{{ campaign.name }} {{ campaign.status|status_badge }}</h1>
+    <p class="subtitle">{% if campaign.brand %}<a href="{% url 'brands:detail' campaign.brand.id %}">{{ campaign.brand.name }}</a>{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    {% if principal.is_admin %}
+      {% if campaign.status == "archived" %}
+        <form method="post" action="{% url 'campaigns:restore' campaign.id %}">{% csrf_token %}<button class="btn btn-secondary" type="submit">{% icon "rotate-ccw" %} Restore</button></form>
+      {% else %}
+        <form method="post" action="{% url 'campaigns:archive' campaign.id %}" data-confirm="Archive “{{ campaign.name }}”? Its content history is kept." data-confirm-title="Archive campaign" data-confirm-label="Archive">{% csrf_token %}<button class="btn btn-secondary" type="submit">{% icon "archive" %} Archive</button></form>
+        <a class="btn btn-secondary" href="{% url 'campaigns:edit' campaign.id %}">{% icon "edit" %} Edit</a>
+      {% endif %}
+    {% endif %}
+    {% if can_write %}<a class="btn btn-primary" href="{% url 'content:create' %}?campaign={{ campaign.id }}">{% icon "plus" %} Create New Content</a>{% endif %}
+  </div>
+</div>
+
+<div class="mini-stats">
+  <div class="mini-stat"><div class="stat-label">Drafts</div><div class="stat-value">{{ groups.draft|length }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Pending Approval</div><div class="stat-value">{{ groups.pending|length }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Approved</div><div class="stat-value">{{ groups.approved|length }}</div></div>
+  <div class="mini-stat"><div class="stat-label">Published</div><div class="stat-value">{{ groups.published|length }}</div></div>
+</div>
+
+<div class="grid grid-main-side mt-3">
+  <div>
+    <section class="card"><div class="card-header"><h2>Content drafts</h2><span class="muted">Includes content returned for edits</span></div>{% include "includes/content_table.html" with items=groups.draft empty="No drafts." %}</section>
+    <section class="card"><div class="card-header"><h2>Pending approvals</h2></div>{% include "includes/content_table.html" with items=groups.pending empty="Nothing waiting for review." %}</section>
+    <section class="card"><div class="card-header"><h2>Approved content</h2></div>{% include "includes/content_table.html" with items=groups.approved empty="No approved content yet." %}</section>
+    <section class="card"><div class="card-header"><h2>Published content</h2></div>{% include "includes/content_table.html" with items=groups.published empty="Nothing published yet." %}</section>
+  </div>
+  <aside>
+    <section class="card">
+      <div class="card-header"><h2>Campaign information</h2></div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <dt>Primary keyword</dt><dd><button type="button" class="tag" data-copy="{{ campaign.primary_keyword }}" title="Click to copy">{{ campaign.primary_keyword }} {% icon "copy" %}</button></dd>
+          <dt>Secondary</dt><dd>{% if campaign.secondary_keywords %}<div class="tag-list">{% for k in campaign.secondary_keywords %}<button type="button" class="tag" data-copy="{{ k }}" title="Click to copy">{{ k }} {% icon "copy" %}</button>{% endfor %}</div>{% else %}—{% endif %}</dd>
+          <dt>Target URL</dt><dd>{% if campaign.target_url %}<span class="copy-line"><a href="{{ campaign.target_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ campaign.target_url }}</a>{% include "includes/copy_button.html" with value=campaign.target_url label="target URL" %}</span>{% else %}—{% endif %}</dd>
+          <dt>Location</dt><dd>{{ campaign.target_location|default:"—" }}</dd>
+          <dt>Start date</dt><dd>{{ campaign.start_date|date:"M j, Y"|default:"—" }}</dd>
+          <dt>End date</dt><dd>{{ campaign.end_date|date:"M j, Y"|default:"Ongoing" }}</dd>
+        </dl>
+        {% if campaign.description %}<hr><p class="mb-0">{{ campaign.description|linebreaksbr }}</p>{% endif %}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>Assigned team</h2></div>
+      {% if campaign.members %}<ul class="list-plain">{% for name in campaign.members %}<li><span class="row"><span class="avatar">{{ name|initials }}</span>{{ name }}</span></li>{% endfor %}</ul>
+      {% else %}<div class="activity-empty">No team members assigned.</div>{% endif %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

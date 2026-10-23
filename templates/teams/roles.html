@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Roles &amp; Permissions{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'accounts:settings' %}">Settings</a>{% icon "chevron-right" "icon-sm" %}<a href="{% url 'teams:list' %}">Team Management</a>{% icon "chevron-right" "icon-sm" %}<span>Roles &amp; Permissions</span></div>
+    <h1>Roles &amp; Permissions</h1>
+    <p class="subtitle">Default access for each role. Members get these unless they have individual overrides.</p>
+  </div>
+</div>
+{% include "teams/_tabs.html" %}
+
+<nav class="status-pills" aria-label="Role">
+  {% for value, label in roles %}<a class="status-pill{% if value == selected %} is-active{% endif %}" href="?role={{ value }}">{{ label }}</a>{% endfor %}
+  <span class="status-pill is-static">{% icon "shield" "icon-sm" %} Admin: always full access</span>
+</nav>
+
+<form method="post" class="card" novalidate data-perm-form>
+  {% csrf_token %}
+  <input type="hidden" name="role" value="{{ selected }}">
+  <div class="card-header">
+    <h2>{{ selected_label }} defaults</h2>
+    <span class="row small">{% if customised %}<span class="badge badge-orange">Customised</span>{% else %}<span class="badge badge-neutral">Built-in defaults</span>{% endif %}<span class="muted">{{ member_count }} member{{ member_count|pluralize }}</span></span>
+  </div>
+  <div class="card-body">
+    {% include "teams/_permission_editor.html" with show_overrides=False %}
+  </div>
+  <div class="card-footer form-actions">
+    {% if customised %}<button type="submit" name="reset" value="1" class="btn btn-secondary" data-confirm="Restore the built-in defaults for the {{ selected_label }} role? This affects every {{ selected_label }} without individual overrides." data-confirm-title="Reset role defaults" data-confirm-label="Reset">{% icon "rotate-ccw" %} Reset to built-in defaults</button>{% endif %}
+    <span class="spacer"></span>
+    <button type="submit" class="btn btn-primary" data-confirm="Save new defaults for the {{ selected_label }} role? This changes access for all {{ member_count }} {{ selected_label }} member{{ member_count|pluralize }} without overrides, from their next request." data-confirm-title="Change role defaults" data-confirm-label="Save" data-confirm-tone="primary">Save changes</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/permissions.js' %}" defer></script>{% endblock %}

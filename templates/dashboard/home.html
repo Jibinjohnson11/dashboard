@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Welcome back, {{ principal.display_name|first_name }}</h1>
+    <p class="subtitle">Here's what's happening across {% if principal.is_admin %}all brands{% else %}your brands{% endif %}.</p>
+  </div>
+  <div class="page-actions">
+    {% if principal.modules.content and principal|has_perm:"content.create" %}<a class="btn btn-primary" href="{% url 'content:create' %}">{% icon "plus" %} Create New Content</a>{% endif %}
+    {% if principal.role == "reviewer" or principal.role == "client" %}<a class="btn btn-primary" href="{% url 'approvals:list' %}">{% icon "check-circle" %} Review content</a>{% endif %}
+  </div>
+</div>
+
+<div class="stat-grid">
+  <a class="stat-card" href="{% url 'brands:list' %}"><div><div class="stat-label">Total Brands</div><div class="stat-value">{{ stats.brands }}</div></div><span class="stat-icon blue">{% icon "building" %}</span></a>
+  <a class="stat-card" href="{% if principal.modules.campaigns %}{% url 'campaigns:list' %}?status=active{% else %}#{% endif %}"><div><div class="stat-label">Active Campaigns</div><div class="stat-value">{{ stats.active_campaigns }}</div></div><span class="stat-icon violet">{% icon "target" %}</span></a>
+  <div class="stat-card"><div><div class="stat-label">Team Members</div><div class="stat-value">{{ stats.team_members }}</div></div><span class="stat-icon navy">{% icon "users" %}</span></div>
+  <a class="stat-card" href="{% if principal.modules.content %}{% url 'content:list' %}?status=draft{% else %}#{% endif %}"><div><div class="stat-label">Draft Contents</div><div class="stat-value">{{ stats.draft }}</div></div><span class="stat-icon navy">{% icon "file-text" %}</span></a>
+  <a class="stat-card" href="{% if principal.modules.approvals %}{% url 'approvals:list' %}{% elif principal.modules.content %}{% url 'content:list' %}?status=pending{% else %}#{% endif %}"><div><div class="stat-label">Pending Approvals</div><div class="stat-value">{{ stats.pending }}</div></div><span class="stat-icon orange">{% icon "clock" %}</span></a>
+  <a class="stat-card" href="{% if principal.modules.approvals %}{% url 'approvals:list' %}?status=approved{% else %}{% url 'content:list' %}?status=approved{% endif %}"><div><div class="stat-label">Approved Contents</div><div class="stat-value">{{ stats.approved }}</div></div><span class="stat-icon green">{% icon "check-circle" %}</span></a>
+  <a class="stat-card" href="{% if principal.modules.approvals %}{% url 'approvals:list' %}?status=rejected{% else %}{% url 'content:list' %}?status=rejected{% endif %}"><div><div class="stat-label">Rejected Contents</div><div class="stat-value">{{ stats.rejected }}</div></div><span class="stat-icon red">{% icon "x-circle" %}</span></a>
+  <a class="stat-card" href="{% url 'publications:list' %}"><div><div class="stat-label">Published Contents</div><div class="stat-value">{{ stats.published }}</div></div><span class="stat-icon blue">{% icon "globe" %}</span></a>
+</div>
+
+<div class="chart-grid">
+  <section class="card" aria-labelledby="chart-status-title">
+    <div class="card-header"><h2 id="chart-status-title">Content status</h2><span class="muted">All visible content</span></div>
+    <div class="chart-box"><canvas id="chart-status" role="img" aria-describedby="chart-status-data"></canvas></div>
+    <ul class="sr-only" id="chart-status-data">{% for row in charts.status.rows %}<li>{{ row.label }}: {{ row.value }}</li>{% endfor %}</ul>
+  </section>
+  <section class="card" aria-labelledby="chart-daily-title">
+    <div class="card-header"><h2 id="chart-daily-title">Daily publishing</h2><span class="muted">Last 30 days</span></div>
+    <div class="chart-box"><canvas id="chart-daily" role="img" aria-label="Number of contents published per day over the last 30 days"></canvas></div>
+  </section>
+</div>
+
+<section class="card" aria-labelledby="chart-campaign-title">
+  <div class="card-header"><h2 id="chart-campaign-title">Campaign progress</h2><span class="muted">Approved and published content by campaign</span></div>
+  <div class="chart-box is-tall"><canvas id="chart-campaigns" role="img" aria-label="Approved and published content totals by campaign"></canvas></div>
+</section>
+
+<h2 class="section-title">Recent activity</h2>
+<div class="activity-grid">
+  <section class="card">
+    <div class="card-header"><h3>Submitted content</h3>{% if principal.modules.approvals %}<a class="small" href="{% url 'approvals:list' %}">View all</a>{% endif %}</div>
+    <ul class="activity-list">
+      {% for c in recent.submitted %}
+      <li><span class="activity-icon orange">{% icon "send" %}</span><div class="activity-text">
+        <a href="{% if principal.modules.content %}{% url 'content:detail' c.id %}{% else %}{% url 'approvals:review' c.id %}{% endif %}">{{ c.title }}</a>
+        <span>{{ c.brand.name|default:"—" }} · {{ c.submitted_at|timesince }} ago</span></div>{{ c.status|status_badge }}</li>
+      {% empty %}<li class="activity-empty">No submissions yet.</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-header"><h3>Recent reviews</h3></div>
+    <ul class="activity-list">
+      {% for r in recent.reviews %}
+      <li><span class="activity-icon {% if r.action == 'approve' %}green{% elif r.action == 'reject' %}red{% else %}orange{% endif %}">{% if r.action == 'approve' %}{% icon "check" %}{% elif r.action == 'reject' %}{% icon "x" %}{% else %}{% icon "rotate-ccw" %}{% endif %}</span>
+        <div class="activity-text"><strong>{{ r.content.title|default:"Content" }}</strong><span>{{ r.action|status_label }} by {{ r.reviewer_name }} · {{ r.reviewed_at|timesince }} ago</span></div></li>
+      {% empty %}<li class="activity-empty">No reviews yet.</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-header"><h3>Recent publications</h3><a class="small" href="{% url 'publications:list' %}">View all</a></div>
+    <ul class="activity-list">
+      {% for p in recent.published %}
+      <li><span class="activity-icon blue">{% icon "globe" %}</span><div class="activity-text"><a href="{% url 'publications:detail' p.id %}">{{ p.title }}</a><span>{{ p.published_at|date:"M j, Y" }}</span></div></li>
+      {% empty %}<li class="activity-empty">Nothing published yet.</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-header"><h3>New brands</h3><a class="small" href="{% url 'brands:list' %}">View all</a></div>
+    <ul class="activity-list">
+      {% for b in recent.brands %}
+      <li><span class="activity-icon blue">{% icon "building" %}</span><div class="activity-text"><a href="{% url 'brands:detail' b.id %}">{{ b.name }}</a><span>{{ b.industry|default:"—" }} · {{ b.created_at|timesince }} ago</span></div></li>
+      {% empty %}<li class="activity-empty">No brands yet.</li>{% endfor %}
+    </ul>
+  </section>
+  {% if principal.modules.campaigns %}
+  <section class="card">
+    <div class="card-header"><h3>New campaigns</h3><a class="small" href="{% url 'campaigns:list' %}">View all</a></div>
+    <ul class="activity-list">
+      {% for c in recent.campaigns %}
+      <li><span class="activity-icon">{% icon "target" %}</span><div class="activity-text"><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a><span>{{ c.primary_keyword }} · {{ c.created_at|timesince }} ago</span></div>{{ c.status|status_badge }}</li>
+      {% empty %}<li class="activity-empty">No campaigns yet.</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+
+{{ charts|json_script:"dashboard-chart-data" }}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/chart.umd.min.js' %}" defer></script>
+<script src="{% static 'js/charts.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Member Access{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'accounts:settings' %}">Settings</a>{% icon "chevron-right" "icon-sm" %}<a href="{% url 'teams:list' %}">Team Management</a>{% icon "chevron-right" "icon-sm" %}<span>Member Access</span></div>
+    <h1>Member Access Management</h1>
+    <p class="subtitle">Which modules each member can open right now. Inactive and pending accounts have no access.</p>
+  </div>
+</div>
+{% include "teams/_tabs.html" %}
+
+<div class="card">
+  <form class="toolbar" method="get" data-auto-submit>
+    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name or email" maxlength="100"></div>
+    <label class="sr-only" for="role">Role</label>
+    <select id="role" name="role"><option value="">All roles</option>{% for value, label in role_choices %}<option value="{{ value }}"{% if value == role %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <button class="btn btn-secondary" type="submit">Filter</button>
+  </form>
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table access-table">
+      <thead><tr><th>Member</th><th>Role</th>{% for m, label in modules %}<th class="text-center" title="{{ label }}">{{ label }}</th>{% endfor %}<th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>{% for p in page.items %}
+        <tr>
+          <td class="cell-title"><a href="{% url 'teams:detail' p.django_user_id %}">{{ p.display_name|default:p.email }}</a><span class="cell-sub">{{ p.status|account_badge }}{% if p.has_overrides %} <span class="perm-tag is-override">Overrides</span>{% endif %}</span></td>
+          <td>{{ p.role|role_label }}</td>
+          {% for cell in p.module_access %}<td class="text-center">{% if cell.on %}<span class="access-dot is-on{% if cell.override %} is-override{% endif %}" title="Has access{% if cell.override %} (override){% endif %}">{% icon "check" "icon-sm" %}</span>{% else %}<span class="access-dot{% if cell.override %} is-override{% endif %}" title="No access{% if cell.override %} (override){% endif %}">–</span>{% endif %}</td>{% endfor %}
+          <td class="actions"><a class="btn btn-sm btn-secondary" href="{% url 'teams:permissions' p.django_user_id %}">Manage</a></td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% include "includes/pagination.html" %}
+  {% else %}{% include "includes/empty_state.html" with icon_name="users" title="No members found" %}{% endif %}
+</div>
+<p class="help mt-2">{% icon "info" "icon-sm" %} Orange marks differ from the role default because of an individual override.</p>
+{% endblock %}

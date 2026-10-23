@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Brands{% endblock %}
+{% block page_title %}Brands{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Brands</h1><p class="subtitle">{% if principal.is_admin %}All client brands managed by your agency.{% else %}Brands you have access to.{% endif %}</p></div>
+  {% if principal.is_admin %}<div class="page-actions"><a class="btn btn-primary" href="{% url 'brands:create' %}">{% icon "plus" %} New Brand</a></div>{% endif %}
+</div>
+
+<div class="card">
+  <form class="toolbar" method="get" data-auto-submit>
+    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search brands</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name, industry or website" maxlength="100"></div>
+    <label class="sr-only" for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">Active &amp; inactive</option>
+      {% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-secondary" type="submit">Filter</button>
+    {% if q or status %}<a class="btn btn-ghost" href="{% url 'brands:list' %}">Clear</a>{% endif %}
+  </form>
+
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table responsive">
+      <thead><tr><th scope="col">Brand Name</th><th scope="col">Website</th><th scope="col">Industry</th><th scope="col">Contact Email</th><th scope="col">Active Campaigns</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for brand in page.items %}
+        <tr>
+          <td class="cell-title"><a href="{% url 'brands:detail' brand.id %}">{{ brand.name }}</a></td>
+          <td data-label="Website">{% if brand.website %}<a href="{{ brand.website }}" target="_blank" rel="noopener noreferrer nofollow" class="truncate">{{ brand.website|cut:"https://"|cut:"http://"|truncatechars:32 }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td data-label="Industry">{{ brand.industry|default:"—" }}</td>
+          <td data-label="Contact">{{ brand.contact_email|default:"—" }}</td>
+          <td data-label="Active Campaigns">{{ brand.active_campaigns }}</td>
+          <td data-label="Status">{{ brand.status|status_badge }}</td>
+          <td class="actions">
+            <div class="menu" data-menu>
+              <button type="button" class="icon-btn icon-btn-sm" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Actions for {{ brand.name }}">{% icon "more-vertical" %}</button>
+              <div class="menu-list" role="menu" hidden>
+                <a class="menu-item" role="menuitem" href="{% url 'brands:detail' brand.id %}">{% icon "eye" %} View</a>
+                {% if principal.is_admin and brand.status != "archived" %}
+                <a class="menu-item" role="menuitem" href="{% url 'brands:edit' brand.id %}">{% icon "edit" %} Edit</a>
+                <a class="menu-item" role="menuitem" href="{% url 'campaigns:create' %}?brand={{ brand.id }}">{% icon "plus" %} Add campaign</a>
+                <div class="menu-sep"></div>
+                <form method="post" action="{% url 'brands:archive' brand.id %}" data-confirm="Archive “{{ brand.name }}”? It will be hidden from lists, but its campaigns and content history are kept." data-confirm-title="Archive brand" data-confirm-label="Archive">
+                  {% csrf_token %}<button type="submit" class="menu-item is-danger" role="menuitem">{% icon "archive" %} Archive</button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pagination.html" %}
+  {% elif q or status %}
+    {% include "includes/empty_state.html" with icon_name="search" title="No brands match your filters" text="Try a different search term or clear the filters." %}
+  {% elif principal.is_admin %}
+    {% url 'brands:create' as create_url %}
+    {% include "includes/empty_state.html" with icon_name="building" title="No brands yet" text="Create your first brand to start planning campaigns and content." action_url=create_url action_label="New Brand" %}
+  {% else %}
+    {% include "includes/empty_state.html" with icon_name="building" title="No brands assigned" text="An administrator hasn't assigned any brands to you yet." %}
+  {% endif %}
+</div>
+{% endblock %}

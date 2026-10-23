@@ -1,0 +1,36 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+  <h1>Welcome back</h1>
+  <p class="lead">Sign in to manage your SEO campaigns.</p>
+  {% if form.rate_limited_message %}
+    <div class="alert alert-warning" role="alert">{% icon "clock" %}<p>{{ form.rate_limited_message }}</p></div>
+  {% else %}
+    {% include "includes/form_errors.html" %}
+  {% endif %}
+  <form method="post" novalidate data-loading-form>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="field{% if form.email.errors %} has-error{% endif %}">
+      <label for="{{ form.email.id_for_label }}">Email address</label>
+      {{ form.email }}
+      {% for e in form.email.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="field{% if form.password.errors %} has-error{% endif %}">
+      <label for="{{ form.password.id_for_label }}">Password</label>
+      <div class="password-field">
+        {{ form.password }}
+        <button type="button" class="icon-btn icon-btn-sm password-toggle" data-password-toggle="{{ form.password.id_for_label }}" aria-label="Show password" aria-pressed="false">{% icon "eye" "icon-sm" %}</button>
+      </div>
+      {% for e in form.password.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="auth-row">
+      <label class="checkbox">{{ form.remember_me }} Remember me</label>
+      <a href="{% url 'accounts:password_reset' %}">Forgot password?</a>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+  </form>
+{% endblock %}
+{% block below %}
+  {% if registration_open %}<p class="auth-footer">New here? <a href="{% url 'accounts:register' %}">Create an account</a></p>{% endif %}
+{% endblock %}

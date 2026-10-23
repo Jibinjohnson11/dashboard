@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ publication.title }}{% endblock %}
+{% block page_title %}Published Content{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'publications:list' %}">Published Content</a>{% icon "chevron-right" "icon-sm" %}<span>{{ publication.title|truncatechars:50 }}</span></div>
+    <h1>{{ publication.title }}</h1>
+    <div class="kv-inline mt-1"><span class="badge badge-primary">Published</span><span>{{ publication.published_at|date:"M j, Y" }}</span><span>Version <strong>{{ publication.approved_version }}</strong></span></div>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-secondary" href="{{ publication.published_url }}" target="_blank" rel="noopener noreferrer nofollow">{% icon "external-link" %} Open URL</a>
+    {% if can_edit %}<a class="btn btn-primary" href="{% url 'publications:edit' publication.id %}">{% icon "edit" %} Edit details</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid grid-main-side">
+  <article class="card">
+    <div class="card-header"><h2>Published version</h2><span class="muted">Version {{ publication.approved_version }}</span></div>
+    <div class="card-body prose">{{ version.body_html|sanitize_html }}</div>
+  </article>
+  <aside>
+    <section class="card">
+      <div class="card-header"><h2>Publication</h2></div>
+      <div class="card-body">
+        <dl class="detail-list">
+          <dt>URL</dt><dd><span class="copy-line"><a href="{{ publication.published_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ publication.published_url|truncatechars:48 }}</a>{% include "includes/copy_button.html" with value=publication.published_url label="publication URL" %}</span></dd>
+          <dt>Brand</dt><dd>{{ publication.brand.name|default:"—" }}</dd>
+          <dt>Campaign</dt><dd>{{ publication.campaign.name|default:"—" }}</dd>
+          <dt>Keyword</dt><dd>{{ publication.keyword }}</dd>
+          <dt>Type</dt><dd>{{ publication.content_type_label }}</dd>
+          <dt>Published by</dt><dd>{{ publication.published_by_name }}</dd>
+          <dt>Recorded by</dt><dd>{{ publication.recorded_by_name }}</dd>
+          <dt>Recorded on</dt><dd>{{ publication.created_at|date:"M j, Y H:i" }}</dd>
+          {% if can_view_content %}<dt>Content</dt><dd><a href="{% url 'content:detail' publication.content_id %}">View content record</a></dd>{% endif %}
+        </dl>
+        {% if publication.notes %}<hr><p class="label">Notes</p><p class="mb-0 muted">{{ publication.notes|linebreaksbr }}</p>{% endif %}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2>History</h2></div>
+      <div class="card-body">
+        {% if history %}<ul class="timeline">{% for h in history %}
+          <li><span class="tl-dot {% if h.action == 'publication.created' %}success{% else %}neutral{% endif %}"></span><div><strong>{{ h.action|audit_label }}</strong> by {{ h.actor_name }}</div><div class="tl-meta">{{ h.created_at|date:"M j, Y H:i" }}</div>
+          {% if h.metadata.changes %}<div class="tl-feedback">{% for field, change in h.metadata.changes.items %}{{ field|cut:"_user_id"|cut:"_"|capfirst }}: {{ change.1|truncatechars:60 }}{% if not forloop.last %}
+{% endif %}{% endfor %}</div>{% endif %}</li>
+        {% endfor %}</ul>{% else %}<p class="muted mb-0">No history.</p>{% endif %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

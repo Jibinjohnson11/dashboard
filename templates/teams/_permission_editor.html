@@ -1,0 +1,32 @@
+{# Expects: rows (from teams.services.permission_rows), show_overrides (bool) #}
+<div class="perm-toolbar">
+  <span class="muted small">Tick a module's <strong>View</strong> to show it in the sidebar; actions need View too.</span>
+  <span class="spacer"></span>
+  <button type="button" class="btn btn-ghost btn-sm" data-perm-all>Select all</button>
+  <button type="button" class="btn btn-ghost btn-sm" data-perm-none>Clear all</button>
+</div>
+<div class="perm-grid">
+  {% for row in rows %}
+  <fieldset class="perm-card{% if not row.available %} is-unavailable{% endif %}" data-perm-module="{{ row.module }}">
+    <legend class="sr-only">{{ row.label }}</legend>
+    <div class="perm-card-head">
+      <strong>{{ row.label }}</strong>
+      <span class="row">
+        <button type="button" class="link-btn" data-perm-module-all>All</button>
+        <button type="button" class="link-btn" data-perm-module-none>None</button>
+      </span>
+    </div>
+    <div class="perm-actions">
+      {% for a in row.actions %}
+      <label class="perm-item{% if a.is_view %} is-view{% endif %}" data-perm-item>
+        <input type="checkbox" name="perm" value="{{ a.key }}" data-perm="{{ a.key }}"{% if a.is_view %} data-perm-view{% endif %}
+               data-default="{{ a.default|yesno:'1,0' }}"{% if a.checked %} checked{% endif %}{% if not a.allowed %} disabled{% endif %}>
+        <span>{{ a.label }}</span>
+        {% if not a.allowed %}<span class="perm-tag">Not available</span>
+        {% elif show_overrides %}<span class="perm-tag is-override" data-override-tag{% if a.checked == a.default %} hidden{% endif %}>Override</span>{% endif %}
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endfor %}
+</div>

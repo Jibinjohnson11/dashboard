@@ -1,0 +1,19 @@
+<aside class="sidebar" id="sidebar" aria-label="Main navigation">
+  <a class="sidebar-brand" href="{% url 'dashboard:home' %}">
+    <span class="brand-mark">{% icon "trending-up" %}</span>
+    <span class="sidebar-brand-text">SEO Dashboard</span>
+  </a>
+  <nav class="sidebar-nav">
+    {% for item in nav_items %}
+    <a class="nav-link{% if item.active %} is-active{% endif %}" href="{% url item.url_name %}"{% if item.active %} aria-current="page"{% endif %} title="{{ item.label }}">
+      {% icon item.icon %}<span class="nav-label">{{ item.label }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+  <div class="sidebar-footer">
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="nav-link" title="Logout">{% icon "log-out" %}<span class="nav-label">Logout</span></button>
+    </form>
+  </div>
+</aside>

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Edit {{ brand.name }}{% else %}New Brand{% endif %}{% endblock %}
+{% block page_title %}Brands{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'brands:list' %}">Brands</a>{% icon "chevron-right" "icon-sm" %}{% if is_edit %}<a href="{% url 'brands:detail' brand.id %}">{{ brand.name }}</a>{% icon "chevron-right" "icon-sm" %}<span>Edit</span>{% else %}<span>New</span>{% endif %}</div>
+    <h1>{% if is_edit %}Edit brand{% else %}Create brand{% endif %}</h1>
+  </div>
+</div>
+<form method="post" class="card" novalidate data-loading-form>
+  {% csrf_token %}
+  <div class="card-body">
+    {% include "includes/form_errors.html" %}
+    <div class="form-grid">
+      <p class="form-section-title">Brand</p>
+      {% include "includes/field.html" with field=form.name %}
+      {% include "includes/field.html" with field=form.website %}
+      {% include "includes/field.html" with field=form.industry %}
+      {% include "includes/field.html" with field=form.status %}
+      {% include "includes/field.html" with field=form.description span=True %}
+      <p class="form-section-title">Primary contact</p>
+      {% include "includes/field.html" with field=form.contact_name %}
+      {% include "includes/field.html" with field=form.contact_email %}
+      {% include "includes/field.html" with field=form.contact_phone %}
+    </div>
+  </div>
+  <div class="card-footer form-actions">
+    <a class="btn btn-secondary" href="{% if is_edit %}{% url 'brands:detail' brand.id %}{% else %}{% url 'brands:list' %}{% endif %}">Cancel</a>
+    <button type="submit" class="btn btn-primary">{% if is_edit %}Save changes{% else %}Create brand{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

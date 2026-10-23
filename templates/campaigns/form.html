@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if is_edit %}Edit {{ campaign.name }}{% else %}New Campaign{% endif %}{% endblock %}
+{% block page_title %}Campaigns{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'campaigns:list' %}">Campaigns</a>{% icon "chevron-right" "icon-sm" %}{% if is_edit %}<a href="{% url 'campaigns:detail' campaign.id %}">{{ campaign.name }}</a>{% icon "chevron-right" "icon-sm" %}<span>Edit</span>{% else %}<span>New</span>{% endif %}</div>
+    <h1>{% if is_edit %}Edit campaign{% else %}Create campaign{% endif %}</h1>
+  </div>
+</div>
+{% if not is_edit and form.brand_id.field.choices|length <= 1 %}
+  <div class="alert alert-warning">{% icon "alert-triangle" %}<p>You need an active brand before creating a campaign. <a href="{% url 'brands:create' %}">Create a brand</a>.</p></div>
+{% endif %}
+<form method="post" class="card" novalidate data-loading-form>
+  {% csrf_token %}
+  <div class="card-body">
+    {% include "includes/form_errors.html" %}
+    <div class="form-grid">
+      <p class="form-section-title">Campaign</p>
+      {% include "includes/field.html" with field=form.name %}
+      {% include "includes/field.html" with field=form.brand_id %}
+      {% include "includes/field.html" with field=form.status %}
+      {% include "includes/field.html" with field=form.target_location %}
+      {% include "includes/field.html" with field=form.start_date %}
+      {% include "includes/field.html" with field=form.end_date %}
+      {% include "includes/field.html" with field=form.description span=True %}
+      <p class="form-section-title">Keywords &amp; target</p>
+      {% include "includes/field.html" with field=form.primary_keyword %}
+      {% include "includes/field.html" with field=form.target_url %}
+      {% include "includes/field.html" with field=form.secondary_keywords span=True %}
+      <div class="span-2 tag-list" data-keyword-preview aria-live="polite"></div>
+      <p class="form-section-title">Team</p>
+      {% include "includes/field.html" with field=form.assigned_user_ids span=True %}
+    </div>
+  </div>
+  <div class="card-footer form-actions">
+    <a class="btn btn-secondary" href="{% if is_edit %}{% url 'campaigns:detail' campaign.id %}{% else %}{% url 'campaigns:list' %}{% endif %}">Cancel</a>
+    <button type="submit" class="btn btn-primary">{% if is_edit %}Save changes{% else %}Create campaign{% endif %}</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/campaigns.js' %}" defer></script>{% endblock %}

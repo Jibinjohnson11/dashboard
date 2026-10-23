@@ -1,0 +1,14 @@
+{% if page.total %}
+<nav class="pagination" aria-label="Pagination">
+  <span class="muted small">Showing {{ page.start_index }}–{{ page.end_index }} of {{ page.total }}</span>
+  {% if page.num_pages > 1 %}
+  <div class="pages">
+    <a class="page-link{% if not page.has_previous %} is-disabled{% endif %}" href="{% if page.has_previous %}{% querystring page=page.previous_page_number %}{% else %}#{% endif %}" aria-label="Previous page">{% icon "chevron-left" "icon-sm" %}</a>
+    {% for n in page.page_range %}
+      <a class="page-link{% if n == page.number %} is-current{% endif %}" href="{% querystring page=n %}"{% if n == page.number %} aria-current="page"{% endif %}>{{ n }}</a>
+    {% endfor %}
+    <a class="page-link{% if not page.has_next %} is-disabled{% endif %}" href="{% if page.has_next %}{% querystring page=page.next_page_number %}{% else %}#{% endif %}" aria-label="Next page">{% icon "chevron-right" "icon-sm" %}</a>
+  </div>
+  {% endif %}
+</nav>
+{% endif %}

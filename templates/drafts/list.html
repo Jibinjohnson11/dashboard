@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Content Drafts{% endblock %}
+{% block page_title %}Content Drafts{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Content Drafts</h1><p class="subtitle">Content that has been reviewed: approved, rejected or returned for edits.</p></div>
+</div>
+
+<div class="stat-grid">
+  <a class="stat-card" href="?status=approved"><div><div class="stat-label">Approved</div><div class="stat-value">{{ counts.approved }}</div></div><span class="stat-icon green">{% icon "check-circle" %}</span></a>
+  <a class="stat-card" href="?status=rejected"><div><div class="stat-label">Rejected</div><div class="stat-value">{{ counts.rejected }}</div></div><span class="stat-icon red">{% icon "x-circle" %}</span></a>
+  <a class="stat-card" href="?status=needs_edit"><div><div class="stat-label">Needs Edit</div><div class="stat-value">{{ counts.needs_edit }}</div></div><span class="stat-icon orange">{% icon "rotate-ccw" %}</span></a>
+  <a class="stat-card" href="{% url 'drafts:list' %}"><div><div class="stat-label">Total Reviewed</div><div class="stat-value">{{ counts.total }}</div></div><span class="stat-icon blue">{% icon "inbox" %}</span></a>
+</div>
+
+<nav class="status-pills" aria-label="Filter by review status">
+  {% for value, label in status_tabs %}
+  <a class="status-pill{% if filters.status == value %} is-active{% endif %}" href="{% if value %}?status={{ value }}{% else %}{% url 'drafts:list' %}{% endif %}"{% if filters.status == value %} aria-current="page"{% endif %}>{{ label }} <span class="count">{% if value %}{{ counts|get_item:value }}{% else %}{{ counts.total }}{% endif %}</span></a>
+  {% endfor %}
+</nav>
+
+<div class="card">
+  <form class="toolbar" method="get" data-auto-submit>
+    {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}">{% endif %}
+    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search</label><input id="q" type="search" name="q" value="{{ filters.q }}" placeholder="Search by title or keyword" maxlength="100"></div>
+    <label class="sr-only" for="brand">Brand</label>
+    <select id="brand" name="brand"><option value="">All brands</option>{% for value, label in brand_choices %}<option value="{{ value }}"{% if value == filters.brand_id %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="campaign">Campaign</label>
+    <select id="campaign" name="campaign"><option value="">All campaigns</option>{% for value, label in campaign_choices %}<option value="{{ value }}"{% if value == filters.campaign_id %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="type">Content type</label>
+    <select id="type" name="type"><option value="">All types</option>{% for value, label in type_choices %}<option value="{{ value }}"{% if value == filters.content_type %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="writer">Writer</label>
+    <select id="writer" name="writer"><option value="">All writers</option>{% for value, label in writer_choices %}<option value="{{ value }}"{% if value == filters.writer_id %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+    <label class="sr-only" for="date_from">Reviewed from</label><input id="date_from" type="date" name="date_from" value="{{ filters.date_from|date:'Y-m-d' }}" title="Reviewed from">
+    <label class="sr-only" for="date_to">Reviewed to</label><input id="date_to" type="date" name="date_to" value="{{ filters.date_to|date:'Y-m-d' }}" title="Reviewed to">
+    <button class="btn btn-secondary" type="submit">Filter</button>
+    {% if has_filters %}<a class="btn btn-ghost" href="{% url 'drafts:list' %}{% if filters.status %}?status={{ filters.status }}{% endif %}">Clear</a>{% endif %}
+  </form>
+
+  {% if page.items %}
+  <div class="table-wrap">
+    <table class="table responsive">
+      <thead><tr><th>Content Title</th><th>Brand</th><th>Campaign</th><th>Keyword</th><th>Type</th><th>Writer</th><th>Review Status</th><th>Reviewed By</th><th>Reviewed</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for c in page.items %}
+        <tr>
+          <td class="cell-title"><a href="{% url 'drafts:detail' c.id %}">{{ c.title }}</a><span class="cell-sub">Revision {{ c.current_version }}</span></td>
+          <td data-label="Brand">{{ c.brand.name|default:"—" }}</td>
+          <td data-label="Campaign">{{ c.campaign.name|default:"—" }}</td>
+          <td data-label="Keyword">{{ c.keyword }}</td>
+          <td data-label="Type">{{ c.content_type_label }}</td>
+          <td data-label="Writer">{{ c.writer_name }}</td>
+          <td data-label="Status">{{ c.status|status_badge }}</td>
+          <td data-label="Reviewed By">{{ c.reviewed_by_name }}</td>
+          <td data-label="Reviewed" class="nowrap">{{ c.last_reviewed_at|date:"M j, Y"|default:"—" }}</td>
+          <td class="actions">
+            <div class="menu" data-menu>
+              <button type="button" class="icon-btn icon-btn-sm" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Actions for {{ c.title }}">{% icon "more-vertical" %}</button>
+              <div class="menu-list" role="menu" hidden>
+                <a class="menu-item" role="menuitem" href="{% url 'drafts:detail' c.id %}">{% icon "eye" %} View details</a>
+                {% if c.status == "needs_edit" and principal.modules.content and principal|has_perm:"drafts.edit" and principal|has_perm:"content.edit" %}{% if principal.is_admin or c.writer_user_id == principal.user_id %}<a class="menu-item" role="menuitem" href="{% url 'content:edit' c.id %}">{% icon "edit" %} Edit &amp; resubmit</a>{% endif %}{% endif %}
+                {% if c.status == "approved" and principal|has_perm:"published.create" %}<a class="menu-item" role="menuitem" href="{% url 'publications:create' %}?content={{ c.id }}">{% icon "globe" %} Record publication</a>{% endif %}
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pagination.html" %}
+  {% elif has_filters or filters.status %}
+    {% include "includes/empty_state.html" with icon_name="search" title="No reviewed content matches" text="Try another search, status or date range." %}
+  {% else %}
+    {% include "includes/empty_state.html" with icon_name="inbox" title="Nothing reviewed yet" text="Content appears here automatically once a reviewer approves, rejects or requests changes." %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}Dashboard{% endblock %} · SEO Management Dashboard</title>
+  <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+</head>
+<body>
+{% include "includes/icons.html" %}
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="layout" data-layout>
+  {% include "includes/sidebar.html" %}
+  <div class="sidebar-backdrop" data-drawer-close></div>
+  <div class="main-col">
+    {% include "includes/topbar.html" %}
+    <main id="main" class="content" tabindex="-1">
+      {% include "includes/messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<dialog class="dialog" id="confirm-dialog" aria-labelledby="confirm-title">
+  <form method="dialog">
+    <div class="dialog-body">
+      <div class="dialog-icon">{% icon "alert-triangle" %}</div>
+      <div>
+        <h2 id="confirm-title" data-confirm-title>Are you sure?</h2>
+        <p data-confirm-message>This action cannot be undone.</p>
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button type="submit" value="cancel" class="btn btn-secondary">Cancel</button>
+      <button type="submit" value="confirm" class="btn btn-danger" data-confirm-button>Confirm</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="{% static 'js/main.js' %}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
