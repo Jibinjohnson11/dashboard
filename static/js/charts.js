@@ -8,7 +8,7 @@
     approved: "#16a34a",
     needs_edit: "#f97316",
     rejected: "#dc2626",
-    published: "#2563eb"
+    published: "#1e3a8a"
   };
   var GRID = "#eef2f7";
   var TEXT = "#64748b";

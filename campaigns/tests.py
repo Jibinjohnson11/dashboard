@@ -6,29 +6,39 @@ from core.testing import WorkflowFixture
 
 class CampaignTests(WorkflowFixture):
     def form_data(self, **extra):
-        data = {"name": "Summer Push", "brand_id": self.brand["id"], "primary_keyword": "summer shoes",
-                "secondary_keywords": "sandals, Sandals\nflip flops", "target_url": "https://acme.example/summer",
-                "start_date": "2026-06-01", "end_date": "2026-08-31", "status": "active", "assigned_user_ids": [self.writer.pk]}
+        data = {"primary_keyword": "summer sale shoes", "brand_id": self.brand["id"], "target_location": "Kochi",
+                "secondary_keywords": "sandals, Sandals\nflip flops", "landing_page_url": "https://acme.example/summer-sale",
+                "end_date": "2099-08-31", "active": "yes", "assigned_user_ids": [self.writer.pk]}
         data.update(extra)
         return data
 
     def test_create_with_brand_and_team(self):
         self.client.force_login(self.admin)
         response = self.client.post(reverse("campaigns:create"), self.form_data())
-        campaign = campaigns.find_one({"name": "Summer Push"})
+        campaign = campaigns.find_one({"landing_page_url": "https://acme.example/summer-sale"})
         self.assertRedirects(response, reverse("campaigns:detail", args=[campaign["id"]]))
         self.assertEqual(campaign["brand_id"], self.brand["_id"])
         self.assertEqual(campaign["secondary_keywords"], ["sandals", "flip flops"])
         self.assertEqual(campaign["assigned_user_ids"], [self.writer.pk])
+        # Name is derived from the primary keyword; legacy target_url stays in sync.
+        self.assertEqual((campaign["name"], campaign["primary_keyword"], campaign["status"]), ("summer sale shoes", "summer sale shoes", "active"))
+        self.assertEqual(campaign["target_url"], "https://acme.example/summer-sale")
+        self.assertIsNotNone(campaign["start_date"])
+        self.client.post(reverse("campaigns:create"), self.form_data())
+        self.assertIsNotNone(campaigns.find_one({"name": "summer sale shoes (2)"}))  # unique per brand
         self.assertEqual(campaign_assignments.user_ids_for(campaign["_id"]), [self.writer.pk])
 
     def test_update_and_reassign(self):
         self.client.force_login(self.admin)
         response = self.client.post(reverse("campaigns:edit", args=[self.campaign["id"]]), self.form_data(
-            name="Acme Launch v2", brand_id=self.other_brand["id"], assigned_user_ids=[self.writer2.pk], status="paused"))
+            primary_keyword="trail running shoes", landing_page_url="https://acme.example/v2", brand_id=self.other_brand["id"],
+            assigned_user_ids=[self.writer2.pk], active="no"))
         self.assertRedirects(response, reverse("campaigns:detail", args=[self.campaign["id"]]))
         updated = campaigns.get(self.campaign["id"])
-        self.assertEqual(updated["name"], "Acme Launch v2")
+        self.assertEqual(updated["name"], "Acme Launch")  # existing names are never rewritten
+        self.assertEqual(updated["primary_keyword"], "trail running shoes")
+        self.assertEqual(updated["start_date"], self.campaign["start_date"])  # not in the form: preserved
+        self.assertEqual(updated["landing_page_url"], "https://acme.example/v2")
         self.assertEqual(updated["brand_id"], self.brand["_id"])  # brand is locked
         self.assertEqual(updated["assigned_user_ids"], [self.writer2.pk])
         self.assertEqual(campaign_assignments.user_ids_for(self.campaign["_id"]), [self.writer2.pk])
@@ -38,7 +48,7 @@ class CampaignTests(WorkflowFixture):
         self.client.force_login(self.admin)
         response = self.client.post(reverse("campaigns:create"), self.form_data(brand_id="0123456789abcdef01234567"))
         self.assertIn("brand_id", response.context["form"].errors)
-        self.assertIsNone(campaigns.find_one({"name": "Summer Push"}))
+        self.assertIsNone(campaigns.find_one({"landing_page_url": "https://acme.example/summer-sale"}))
 
     def test_archived_brand_rejected(self):
         from brands.services import archive_brand
@@ -59,7 +69,7 @@ class CampaignTests(WorkflowFixture):
 
     def test_end_date_before_start_rejected(self):
         self.client.force_login(self.admin)
-        response = self.client.post(reverse("campaigns:create"), self.form_data(end_date="2026-01-01"))
+        response = self.client.post(reverse("campaigns:create"), self.form_data(end_date="2020-01-01"))
         self.assertIn("end_date", response.context["form"].errors)
 
     def test_filters(self):

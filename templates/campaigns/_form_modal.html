@@ -1,0 +1,11 @@
+<form method="post" action="{% if is_edit %}{% url 'campaigns:edit' campaign.id %}{% else %}{% url 'campaigns:create' %}{% endif %}" class="campaign-modal" novalidate data-loading-form>
+  <div class="campaign-modal-head">
+    <span class="campaign-modal-icon">{% if is_edit %}{% icon "edit" %}{% else %}{% icon "plus" %}{% endif %}</span>
+    <h2 id="campaign-modal-title">{% if is_edit %}Edit Campaign{% else %}Create Campaign{% endif %}</h2>
+  </div>
+  <div class="campaign-modal-body">{% include "campaigns/_fields.html" %}</div>
+  <div class="campaign-modal-foot">
+    <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+    <button type="submit" class="btn btn-primary">{% icon "check" %} {% if is_edit %}Save Changes{% else %}Create Campaign{% endif %}</button>
+  </div>
+</form>

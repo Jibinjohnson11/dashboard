@@ -1,0 +1,48 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# In Render: New → Blueprint → pick this repo. You'll be asked for MONGODB_URI (from MongoDB Atlas).
+services:
+  - type: web
+    name: dashboard
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz/
+    # Free instances have no pre-deploy step, so run the Procfile release commands on start.
+    dockerCommand: >-
+      sh -c "python manage.py migrate --noinput &&
+      python manage.py createcachetable &&
+      python manage.py init_mongodb &&
+      gunicorn config.wsgi:application -c gunicorn.conf.py"
+    envVars:
+      - key: DJANGO_ENV
+        value: production
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_BEHIND_PROXY
+        value: "true"
+      - key: DJANGO_TRUST_X_FORWARDED_FOR
+        value: "true"
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dashboard-db
+          property: connectionString
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: seo_dashboard
+      - key: REGISTRATION_MODE
+        value: invite_only
+      - key: CACHE_BACKEND
+        value: db
+      - key: PORT
+        value: "8000"
+      # The free plan has 512 MB of memory; keep gunicorn small.
+      - key: GUNICORN_WORKERS
+        value: "2"
+
+databases:
+  - name: dashboard-db
+    plan: free
+    databaseName: seo_dashboard
+    user: seo_user

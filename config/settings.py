@@ -55,6 +55,11 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 if TESTING:
     ALLOWED_HOSTS = ["testserver", "127.0.0.1", "localhost"]
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS", "")
+# Render sets this to the service's public hostname (e.g. dashboard-xxxx.onrender.com).
+RENDER_EXTERNAL_HOSTNAME = env("RENDER_EXTERNAL_HOSTNAME")
+if RENDER_EXTERNAL_HOSTNAME and not TESTING:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -181,7 +186,7 @@ SECURE_CSP = {
     "default-src": [CSP.SELF],
     "script-src": [CSP.SELF],
     "style-src": [CSP.SELF],
-    "img-src": [CSP.SELF, "data:"],
+    "img-src": [CSP.SELF, "data:", "blob:"],  # blob: = local preview of a logo before upload
     "font-src": [CSP.SELF],
     "connect-src": [CSP.SELF],
     "object-src": [CSP.NONE],
@@ -240,6 +245,10 @@ if not IS_PRODUCTION:
     import warnings
 
     warnings.filterwarnings("ignore", message="No directory at", module="whitenoise.base")
+
+# --- Uploaded files (brand logos). Served only through authenticated views, never publicly. ---
+MEDIA_ROOT = Path(env("MEDIA_ROOT", str(BASE_DIR / "media")))
+BRAND_LOGO_MAX_BYTES = env_int("BRAND_LOGO_MAX_BYTES", 2 * 1024 * 1024)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 PAGE_SIZE = 15

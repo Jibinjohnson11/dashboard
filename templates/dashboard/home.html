@@ -84,7 +84,7 @@
     <div class="card-header"><h3>New campaigns</h3><a class="small" href="{% url 'campaigns:list' %}">View all</a></div>
     <ul class="activity-list">
       {% for c in recent.campaigns %}
-      <li><span class="activity-icon">{% icon "target" %}</span><div class="activity-text"><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a><span>{{ c.primary_keyword }} · {{ c.created_at|timesince }} ago</span></div>{{ c.status|status_badge }}</li>
+      <li><span class="activity-icon">{% icon "target" %}</span><div class="activity-text"><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a><span>{{ c.primary_keyword|default:c.target_location|default:"Campaign" }} · {{ c.created_at|timesince }} ago</span></div>{{ c.status|status_badge }}</li>
       {% empty %}<li class="activity-empty">No campaigns yet.</li>{% endfor %}
     </ul>
   </section>

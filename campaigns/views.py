@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.utils import timezone
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -30,6 +31,20 @@ def campaign_list(request):
     })
 
 
+def _render_form(request, form, *, is_edit, campaign=None):
+    """`?modal=1` returns just the form for the in-page dialog; otherwise the full page."""
+    context = {"form": form, "is_edit": is_edit, "campaign": campaign, "next": request.POST.get("next") or request.GET.get("next", "")}
+    if request.GET.get("modal") == "1" and request.method == "GET":
+        return render(request, "campaigns/_form_modal.html", context)
+    return render(request, "campaigns/form.html", context)
+
+
+def _after_save(request, campaign_id):
+    if request.POST.get("next") == "list":
+        return redirect("campaigns:list")
+    return redirect("campaigns:detail", campaign_id=campaign_id)
+
+
 @module_required("campaigns")
 @require_http_methods(["GET", "POST"])
 def campaign_create(request):
@@ -40,6 +55,7 @@ def campaign_create(request):
         initial=initial,
         brand_choices=brand_choices(request.principal),
         member_choices=assignable_users(),
+        start_date=timezone.localdate(),
     )
     if request.method == "POST" and form.is_valid():
         try:
@@ -47,9 +63,9 @@ def campaign_create(request):
         except ServiceError as exc:
             form.add_error(None, str(exc))
         else:
-            messages.success(request, f"Campaign “{campaign['name']}” created.")
-            return redirect("campaigns:detail", campaign_id=campaign["id"])
-    return render(request, "campaigns/form.html", {"form": form, "is_edit": False})
+            messages.success(request, f"Campaign “{services.display_title(campaign)}” created.")
+            return _after_save(request, campaign["id"])
+    return _render_form(request, form, is_edit=False)
 
 
 @module_required("campaigns")
@@ -73,6 +89,7 @@ def campaign_edit(request, campaign_id):
         secondary_keywords="\n".join(campaign.get("secondary_keywords", [])),
         start_date=datetime_to_date(campaign.get("start_date")),
         end_date=datetime_to_date(campaign.get("end_date")),
+        active="yes" if campaign["status"] == "active" else "no",
     )
     form = CampaignForm(
         request.POST or None,
@@ -80,6 +97,8 @@ def campaign_edit(request, campaign_id):
         brand_choices=[(str(campaign["brand_id"]), campaign["brand"]["name"] if campaign["brand"] else "Unknown brand")],
         member_choices=assignable_users(),
         lock_brand=True,
+        current_status=campaign["status"],
+        start_date=datetime_to_date(campaign.get("start_date")),
     )
     if request.method == "POST" and form.is_valid():
         try:
@@ -88,8 +107,8 @@ def campaign_edit(request, campaign_id):
             form.add_error(None, str(exc))
         else:
             messages.success(request, "Campaign updated.")
-            return redirect("campaigns:detail", campaign_id=campaign_id)
-    return render(request, "campaigns/form.html", {"form": form, "campaign": campaign, "is_edit": True})
+            return _after_save(request, campaign_id)
+    return _render_form(request, form, is_edit=True, campaign=campaign)
 
 
 @module_required("campaigns")

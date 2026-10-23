@@ -21,7 +21,7 @@
   {% endif %}
   {% if results.campaigns %}
   <section class="card"><div class="card-header"><h2>Campaigns</h2></div>
-    <ul class="list-plain">{% for c in results.campaigns %}<li><span><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a> <span class="muted small">· {{ c.primary_keyword }}</span></span>{{ c.status|status_badge }}</li>{% endfor %}</ul>
+    <ul class="list-plain">{% for c in results.campaigns %}<li><span><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a> <span class="muted small">· {{ c.primary_keyword|default:c.target_location|default:"Campaign" }}</span></span>{{ c.status|status_badge }}</li>{% endfor %}</ul>
   </section>
   {% endif %}
   {% if results.content %}

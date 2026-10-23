@@ -1,8 +1,9 @@
 from django.contrib import messages
+from django.http import FileResponse, Http404
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
-from brands import services
+from brands import logos, services
 from brands.forms import BrandForm
 from core.exceptions import ServiceError
 from core.permissions import module_required, require
@@ -28,7 +29,7 @@ def brand_list(request):
 @require_http_methods(["GET", "POST"])
 def brand_create(request):
     require(request.principal.is_admin)
-    form = BrandForm(request.POST or None)
+    form = BrandForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         try:
             brand = services.create_brand(request.principal, form.cleaned_data)
@@ -51,7 +52,7 @@ def brand_detail(request, brand_id):
 def brand_edit(request, brand_id):
     require(request.principal.is_admin)
     brand = services.get_brand(request.principal, brand_id)
-    form = BrandForm(request.POST or None, initial=brand)
+    form = BrandForm(request.POST or None, request.FILES or None, initial=brand)
     if request.method == "POST" and form.is_valid():
         try:
             services.update_brand(request.principal, brand_id, form.cleaned_data)
@@ -83,3 +84,21 @@ def brand_restore(request, brand_id):
     except ServiceError as exc:
         messages.error(request, str(exc))
     return redirect("brands:detail", brand_id=brand_id)
+
+
+@module_required("brands")
+def brand_logo(request, brand_id):
+    """Serve a brand's logo only to users who may see the brand (no public media URLs)."""
+    brand = services.get_brand(request.principal, brand_id)
+    if not brand.get("logo_path"):
+        raise Http404("No logo.")
+    try:
+        handle = logos.open_logo(brand["logo_path"])
+    except (FileNotFoundError, OSError):
+        raise Http404("Logo file missing.")
+    response = FileResponse(handle, content_type=brand.get("logo_content_type") or "application/octet-stream")
+    response["Content-Disposition"] = "inline"
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    response["Cache-Control"] = "private, max-age=3600"
+    return response

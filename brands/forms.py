@@ -1,5 +1,6 @@
 from django import forms
 
+from brands import logos
 from brands.services import STATUS_CHOICES
 from core.forms import HttpURLField, clean_phone, collapse_spaces
 
@@ -13,6 +14,22 @@ class BrandForm(forms.Form):
     contact_phone = forms.CharField(label="Contact phone", max_length=25, required=False)
     description = forms.CharField(max_length=2000, required=False, widget=forms.Textarea(attrs={"rows": 4}))
     status = forms.ChoiceField(choices=STATUS_CHOICES, initial="active")
+    logo = forms.FileField(
+        label="Brand logo",
+        required=False,
+        widget=forms.ClearableFileInput(attrs={"accept": "image/png,image/jpeg,image/webp,image/gif", "data-logo-input": ""}),
+        help_text=f"{logos.ALLOWED_LABEL}, up to 2 MB. A square image works best.",
+    )
+    remove_logo = forms.BooleanField(label="Remove current logo", required=False)
+
+    def clean_logo(self):
+        upload = self.cleaned_data.get("logo")
+        if upload:
+            try:
+                logos.inspect_upload(upload)
+            except ValueError as exc:
+                raise forms.ValidationError(str(exc))
+        return upload
 
     def clean_name(self):
         name = collapse_spaces(self.cleaned_data["name"])

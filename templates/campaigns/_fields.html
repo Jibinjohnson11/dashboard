@@ -1,0 +1,26 @@
+{# Single-column campaign fields shared by the modal and the full page. #}
+{% csrf_token %}
+<input type="hidden" name="next" value="{{ next }}">
+{% include "includes/form_errors.html" %}
+<div class="campaign-fields">
+  {% include "includes/field.html" with field=form.primary_keyword %}
+  <div class="field{% if form.secondary_keywords.errors %} has-error{% endif %}">
+    <label for="{{ form.secondary_keywords.id_for_label }}">Secondary keywords</label>
+    <div class="tag-input" data-tag-input hidden>
+      <div class="tag-input-chips" data-tag-chips></div>
+      <input type="text" class="tag-input-field" placeholder="Type and press Enter to add keywords…" aria-label="Add a secondary keyword" data-tag-field>
+    </div>
+    {{ form.secondary_keywords }}
+    {% for e in form.secondary_keywords.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  </div>
+  {% include "includes/field.html" with field=form.brand_id %}
+  {% include "includes/field.html" with field=form.target_location %}
+  <div class="field{% if form.landing_page_url.errors %} has-error{% endif %}">
+    <label for="{{ form.landing_page_url.id_for_label }}" class="label-icon">{% icon "link" "icon-sm" %} Landing page URL</label>
+    {{ form.landing_page_url }}
+    {% for e in form.landing_page_url.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  </div>
+  {% include "includes/field.html" with field=form.end_date %}
+  {% include "includes/field.html" with field=form.active %}
+  {% include "includes/field.html" with field=form.assigned_user_ids %}
+</div>

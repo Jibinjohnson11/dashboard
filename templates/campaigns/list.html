@@ -1,65 +1,65 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Campaigns{% endblock %}
 {% block page_title %}Campaigns{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div><h1>Campaigns</h1><p class="subtitle">Keyword campaigns grouped by brand.</p></div>
-  {% if principal.is_admin %}<div class="page-actions"><a class="btn btn-primary" href="{% url 'campaigns:create' %}">{% icon "plus" %} New Campaign</a></div>{% endif %}
-</div>
-
-<div class="card">
-  <form class="toolbar" method="get" data-auto-submit>
-    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search campaigns</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name or keyword" maxlength="100"></div>
+<div class="campaign-toolbar">
+  <form class="campaign-search" method="get" role="search" data-auto-submit>
+    <div class="search-field">{% icon "search" "icon-sm" %}<label class="sr-only" for="q">Search campaigns</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Search campaigns…" maxlength="100"></div>
     <label class="sr-only" for="brand">Brand</label>
     <select id="brand" name="brand"><option value="">All brands</option>{% for value, label in brand_choices %}<option value="{{ value }}"{% if value == brand %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
     <label class="sr-only" for="status">Status</label>
     <select id="status" name="status"><option value="">All statuses</option>{% for value, label in status_choices %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
-    <button class="btn btn-secondary" type="submit">Filter</button>
-    {% if q or status or brand %}<a class="btn btn-ghost" href="{% url 'campaigns:list' %}">Clear</a>{% endif %}
   </form>
+  {% if principal.is_admin %}<a class="btn btn-primary" href="{% url 'campaigns:create' %}?next=list" data-modal-open="{% url 'campaigns:create' %}?modal=1&next=list">{% icon "plus" %} Create Campaign</a>{% endif %}
+</div>
 
-  {% if page.items %}
-  <div class="table-wrap">
-    <table class="table responsive">
-      <thead><tr><th>Campaign Name</th><th>Brand</th><th>Primary Keyword</th><th>Target URL</th><th>Assigned Team</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
-      <tbody>
-      {% for c in page.items %}
-        <tr>
-          <td class="cell-title"><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a></td>
-          <td data-label="Brand">{% if c.brand %}<a href="{% url 'brands:detail' c.brand.id %}">{{ c.brand.name }}</a>{% else %}—{% endif %}</td>
-          <td data-label="Keyword"><button type="button" class="tag" data-copy="{{ c.primary_keyword }}" title="Copy keyword">{{ c.primary_keyword }} {% icon "copy" %}</button></td>
-          <td data-label="Target URL">{% if c.target_url %}<span class="copy-line"><a href="{{ c.target_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ c.target_url|cut:"https://"|cut:"http://"|truncatechars:28 }}</a>{% include "includes/copy_button.html" with value=c.target_url label="target URL" %}</span>{% else %}—{% endif %}</td>
-          <td data-label="Team">{% if c.members %}{{ c.members|join:", "|truncatechars:40 }}{% else %}<span class="muted">Unassigned</span>{% endif %}</td>
-          <td data-label="Status">{{ c.status|status_badge }}</td>
-          <td class="actions">
-            <div class="menu" data-menu>
-              <button type="button" class="icon-btn icon-btn-sm" data-menu-toggle aria-haspopup="true" aria-expanded="false" aria-label="Actions for {{ c.name }}">{% icon "more-vertical" %}</button>
-              <div class="menu-list" role="menu" hidden>
-                <a class="menu-item" role="menuitem" href="{% url 'campaigns:detail' c.id %}">{% icon "eye" %} View</a>
-                {% if principal|has_perm:"content.create" and c.status == "active" or principal|has_perm:"content.create" and c.status == "draft" %}<a class="menu-item" role="menuitem" href="{% url 'content:create' %}?campaign={{ c.id }}">{% icon "pen" %} Write content</a>{% endif %}
-                {% if principal.is_admin and c.status != "archived" %}
-                <a class="menu-item" role="menuitem" href="{% url 'campaigns:edit' c.id %}">{% icon "edit" %} Edit</a>
-                <div class="menu-sep"></div>
-                <form method="post" action="{% url 'campaigns:archive' c.id %}" data-confirm="Archive “{{ c.name }}”? Its content history is kept." data-confirm-title="Archive campaign" data-confirm-label="Archive">
-                  {% csrf_token %}<button type="submit" class="menu-item is-danger" role="menuitem">{% icon "archive" %} Archive</button>
-                </form>
-                {% endif %}
-              </div>
-            </div>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% include "includes/pagination.html" %}
-  {% elif q or status or brand %}
+{% if page.items %}
+<div class="campaign-grid">
+  {% for c in page.items %}
+  <article class="campaign-card">
+    <header class="campaign-card-head">
+      <a class="campaign-card-title" href="{% url 'campaigns:detail' c.id %}" title="{{ c.title }}">{% icon "target" "icon-sm" %}<span>{{ c.title }}</span></a>
+      <span class="campaign-pill is-{{ c.status }}">{{ c.status|status_label }}</span>
+    </header>
+    <div class="campaign-card-body">
+      <div class="campaign-card-row">
+        <span class="campaign-meta">{% icon "building" "icon-sm" %} {{ c.brand.name|default:"—" }}</span>
+        <span class="campaign-chip">{% icon "link" "icon-sm" %} {{ c.backlinks }} backlink{{ c.backlinks|pluralize }}</span>
+      </div>
+      <div class="campaign-card-row is-meta">
+        {% if c.target_location %}<span class="campaign-meta">{% icon "globe" "icon-sm" %} {{ c.target_location }}</span>{% endif %}
+        {% if c.end_date %}<span class="campaign-meta" title="Target deadline">{% icon "calendar" "icon-sm" %} {{ c.end_date|date:"Y-m-d" }}</span>{% endif %}
+      </div>
+      {% if c.landing_page_url %}
+      <div class="campaign-card-row">
+        <a class="campaign-url" href="{{ c.landing_page_url }}" target="_blank" rel="noopener noreferrer nofollow" title="{{ c.landing_page_url }}">{% icon "link" "icon-sm" %}<span>{{ c.landing_page_url }}</span></a>
+        {% include "includes/copy_button.html" with value=c.landing_page_url label="landing page URL" %}
+      </div>
+      {% endif %}
+    </div>
+    <footer class="campaign-card-foot">
+      <a class="btn btn-secondary btn-sm" href="{% url 'campaigns:detail' c.id %}">{% icon "eye" "icon-sm" %} View</a>
+      <span class="campaign-byline">{% if c.created_by_name %}{% icon "user" "icon-sm" %} {{ c.created_by_name }}{% endif %} <span>{{ c.created_at|date:"M j, Y" }}</span></span>
+      {% if principal.is_admin and c.status != "archived" %}<a class="btn btn-secondary btn-sm" href="{% url 'campaigns:edit' c.id %}?next=list" data-modal-open="{% url 'campaigns:edit' c.id %}?modal=1&next=list">{% icon "edit" "icon-sm" %} Edit</a>{% endif %}
+    </footer>
+  </article>
+  {% endfor %}
+</div>
+<div class="card mt-2">{% include "includes/pagination.html" %}</div>
+{% else %}
+<div class="card">
+  {% if q or status or brand %}
     {% include "includes/empty_state.html" with icon_name="search" title="No campaigns match your filters" text="Try a different search or clear the filters." %}
   {% elif principal.is_admin %}
     {% url 'campaigns:create' as create_url %}
-    {% include "includes/empty_state.html" with icon_name="target" title="No campaigns yet" text="Create a campaign for a brand to start assigning keywords and writers." action_url=create_url action_label="New Campaign" %}
+    {% include "includes/empty_state.html" with icon_name="target" title="No campaigns yet" text="Create a campaign for a brand to start assigning keywords and writers." action_url=create_url action_label="Create Campaign" %}
   {% else %}
     {% include "includes/empty_state.html" with icon_name="target" title="No campaigns assigned" text="You'll see campaigns here once an administrator assigns you." %}
   {% endif %}
 </div>
+{% endif %}
+
+<dialog class="dialog campaign-dialog" id="campaign-modal" aria-labelledby="campaign-modal-title"><div data-modal-body></div></dialog>
 {% endblock %}
+{% block scripts %}<script src="{% static 'js/campaigns.js' %}" defer></script>{% endblock %}

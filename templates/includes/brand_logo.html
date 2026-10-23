@@ -1,0 +1,5 @@
+{# Usage: {% include "includes/brand_logo.html" with brand=b size="sm|md|lg" %} #}
+<span class="brand-logo brand-logo-{{ size|default:'md' }}">
+  {% if brand.logo_path %}<img src="{% url 'brands:logo' brand.id %}?v={{ brand.logo_updated_at|date:'U' }}" alt="{{ brand.name }} logo" loading="lazy">
+  {% else %}<span aria-hidden="true">{{ brand.name|initials }}</span>{% endif %}
+</span>

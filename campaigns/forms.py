@@ -7,48 +7,43 @@ from core.forms import HttpURLField, collapse_spaces
 
 
 class CampaignForm(forms.Form):
-    name = forms.CharField(label="Campaign name", max_length=150)
-    brand_id = forms.ChoiceField(label="Brand")
+    """Field order is the on-screen order (matches the campaign modal design)."""
+
     primary_keyword = forms.CharField(label="Primary keyword", max_length=120)
     secondary_keywords = forms.CharField(
         label="Secondary keywords",
         required=False,
         max_length=3000,
-        widget=forms.Textarea(attrs={"rows": 3, "data-keyword-input": ""}),
-        help_text="Separate keywords with commas or new lines (up to 30).",
+        widget=forms.Textarea(attrs={"rows": 2, "data-keyword-input": "", "placeholder": "One keyword per line"}),
+        help_text="Type a keyword and press Enter to add it (up to 30).",
     )
-    target_url = HttpURLField(label="Target URL", required=False)
-    target_location = forms.CharField(label="Target location", max_length=120, required=False)
-    description = forms.CharField(label="Campaign description", max_length=3000, required=False, widget=forms.Textarea(attrs={"rows": 4}))
-    start_date = forms.DateField(label="Start date", widget=forms.DateInput(attrs={"type": "date"}))
-    end_date = forms.DateField(label="End date", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    brand_id = forms.ChoiceField(label="Brand")
+    target_location = forms.CharField(label="Location", max_length=120, required=False)
+    landing_page_url = HttpURLField(label="Landing page URL", required=False)
+    end_date = forms.DateField(label="Target deadline", required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    active = forms.ChoiceField(label="Active", choices=[("yes", "Yes"), ("no", "No")], initial="yes")
     assigned_user_ids = forms.TypedMultipleChoiceField(
         label="Assigned team members", required=False, coerce=int, widget=forms.CheckboxSelectMultiple
     )
-    status = forms.ChoiceField(choices=STATUS_CHOICES, initial="active")
 
-    def __init__(self, *args, brand_choices=(), member_choices=(), lock_brand=False, **kwargs):
+    def __init__(self, *args, brand_choices=(), member_choices=(), lock_brand=False, current_status=None, start_date=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.current_status = current_status
+        self.start_date = start_date
         self.fields["brand_id"].choices = [("", "Select a brand")] + list(brand_choices)
         self.fields["assigned_user_ids"].choices = list(member_choices)
         if lock_brand:
             self.fields["brand_id"].disabled = True
             self.fields["brand_id"].help_text = "A campaign always stays connected to its brand."
 
-    def clean_name(self):
-        name = collapse_spaces(self.cleaned_data["name"])
-        if len(name) < 2:
-            raise forms.ValidationError("Campaign name must be at least 2 characters.")
-        return name
-
     def clean_primary_keyword(self):
-        return collapse_spaces(self.cleaned_data["primary_keyword"])
+        keyword = collapse_spaces(self.cleaned_data["primary_keyword"])
+        if len(keyword) < 2:
+            raise forms.ValidationError("Enter the primary keyword for this campaign.")
+        return keyword
 
     def clean_target_location(self):
         return collapse_spaces(self.cleaned_data["target_location"])
-
-    def clean_description(self):
-        return self.cleaned_data["description"].strip()
 
     def clean_secondary_keywords(self):
         raw = self.cleaned_data["secondary_keywords"]
@@ -66,7 +61,13 @@ class CampaignForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        start, end = cleaned.get("start_date"), cleaned.get("end_date")
-        if start and end and end < start:
-            self.add_error("end_date", "End date cannot be before the start date.")
+        # "Active: Yes/No" maps onto the existing statuses. "No" keeps a non-active status
+        # (draft/paused/completed) if the campaign already had one, otherwise pauses it.
+        if cleaned.get("active") == "yes":
+            cleaned["status"] = "active"
+        elif cleaned.get("active") == "no":
+            cleaned["status"] = self.current_status if self.current_status in ("draft", "paused", "completed") else "paused"
+        end = cleaned.get("end_date")
+        if self.start_date and end and end < self.start_date:
+            self.add_error("end_date", "The deadline cannot be before the campaign's start date.")
         return cleaned

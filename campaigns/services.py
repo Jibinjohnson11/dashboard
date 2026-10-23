@@ -5,7 +5,7 @@ from brands.repositories import brands
 from campaigns.repositories import campaign_assignments, campaigns
 from core import audit
 from core.exceptions import NotFound, ServiceError
-from core.permissions import ACTIVE, INVITED, TEAM_MEMBER, brand_scope, campaign_read_scope, campaign_scope, combine, content_scope, require
+from core.permissions import ACTIVE, INVITED, TEAM_MEMBER, brand_scope, campaign_read_scope, campaign_scope, combine, content_scope, publication_scope, require
 from core.utils import date_to_datetime, parse_oid, search_regex, utcnow
 
 STATUS_CHOICES = [("draft", "Draft"), ("active", "Active"), ("paused", "Paused"), ("completed", "Completed")]
@@ -18,9 +18,12 @@ def _hydrate(items):
     from teams.services import display_names
 
     brand_map = brands.by_ids(c["brand_id"] for c in items)
-    names = display_names({uid for c in items for uid in c.get("assigned_user_ids", [])})
+    names = display_names({uid for c in items for uid in c.get("assigned_user_ids", [])} | {c.get("created_by_user_id") for c in items})
     for campaign in items:
         campaign["brand"] = brand_map.get(campaign["brand_id"])
+        campaign["landing_page_url"] = landing_url(campaign)
+        campaign["title"] = display_title(campaign)
+        campaign["created_by_name"] = names.get(campaign.get("created_by_user_id"), "")
         campaign["members"] = [names.get(uid, "Unknown") for uid in campaign.get("assigned_user_ids", [])]
     return items
 
@@ -31,9 +34,18 @@ def list_campaigns(principal, *, q="", brand_id="", status="", page=1):
         query["brand_id"] = parse_oid(brand_id)
     regex = search_regex(q)
     if regex:
-        query["$or"] = [{"name": regex}, {"primary_keyword": regex}, {"secondary_keywords": regex}]
+        query["$or"] = [{"name": regex}, {"primary_keyword": regex}, {"secondary_keywords": regex},
+                        {"landing_page_url": regex}, {"target_url": regex}, {"target_location": regex}]
     result = campaigns.find_page(combine(campaign_scope(principal), query), page=page, sort=[("created_at", DESCENDING)])
     _hydrate(result.items)
+    from publications.repositories import publications
+
+    counts = {row["_id"]: row["n"] for row in publications.aggregate([
+        {"$match": combine(publication_scope(principal), {"campaign_id": {"$in": [c["_id"] for c in result.items]}})},
+        {"$group": {"_id": "$campaign_id", "n": {"$sum": 1}}},
+    ])}
+    for campaign in result.items:
+        campaign["backlinks"] = counts.get(campaign["_id"], 0)
     return result
 
 
@@ -74,24 +86,56 @@ def _validate_members(user_ids):
     return sorted(user_ids)
 
 
-def _clean(data):
+def landing_url(campaign):
+    """Landing page URL, falling back to the legacy ``target_url`` field on older campaigns."""
+    return campaign.get("landing_page_url") or campaign.get("target_url") or ""
+
+
+def display_title(campaign):
+    """Cards and headings show the primary keyword; older campaigns without one show their name."""
+    return campaign.get("primary_keyword") or campaign.get("name") or "Campaign"
+
+
+def _derived_name(brand_id, data):
+    """Internal campaign name (users don't type one). Uses the primary keyword, else the landing
+    page path/host, else the location. Made unique per brand; never rewritten afterwards."""
+    from urllib.parse import urlparse
+
+    label = data.get("primary_keyword") or ""
+    url = data.get("landing_page_url") or ""
+    parsed = urlparse(url) if url and not label else None
+    if parsed and parsed.netloc:
+        path = parsed.path.strip("/")
+        label = path.replace("/", " / ").replace("-", " ") if path else parsed.netloc.removeprefix("www.")
+    base = (label or data.get("target_location") or "Campaign")[:110]
+    name, n = base, 2
+    while campaigns.col.find_one({"brand_id": brand_id, "name_lower": name.lower()}, {"_id": 1}):
+        name, n = f"{base} ({n})", n + 1
+    return name
+
+
+def _clean(data, existing_start=None):
     if data.get("status") not in dict(STATUS_CHOICES):
         raise ServiceError("Invalid campaign status.")
-    start, end = data.get("start_date"), data.get("end_date")
+    start, end = data.get("start_date") or existing_start, data.get("end_date")
     if start and end and end < start:
         raise ServiceError("End date cannot be before the start date.")
-    return {
-        "name": data["name"],
-        "name_lower": data["name"].lower(),
-        "primary_keyword": data["primary_keyword"],
+    url = data.get("landing_page_url") or data.get("target_url") or ""
+    doc = {
+        "primary_keyword": (data.get("primary_keyword") or "").strip(),
         "secondary_keywords": data.get("secondary_keywords") or [],
-        "target_url": data.get("target_url") or "",
+        "landing_page_url": url,
+        "target_url": url,  # legacy field kept in sync for backward compatibility
         "target_location": data.get("target_location") or "",
-        "description": data.get("description") or "",
-        "start_date": date_to_datetime(start),
         "end_date": date_to_datetime(end),
         "status": data["status"],
     }
+    # Only overwrite fields the caller actually supplied (the form no longer edits these).
+    if "start_date" in data:
+        doc["start_date"] = date_to_datetime(start)
+    if "description" in data:
+        doc["description"] = data.get("description") or ""
+    return doc
 
 
 def _sync_assignments(campaign_id, user_ids):
@@ -103,8 +147,19 @@ def create_campaign(principal, data):
     require(principal.is_admin and principal.has_perm("campaigns.create"))
     brand = _validate_brand(principal, data["brand_id"])
     members = _validate_members(data.get("assigned_user_ids", []))
-    doc = _clean(data)
-    doc.update(brand_id=brand["_id"], assigned_user_ids=members, created_by_user_id=principal.user_id)
+    doc = _clean(data, existing_start=utcnow().date())  # new campaigns start today unless told otherwise
+    # Name and primary keyword are no longer form inputs. An explicit name is still accepted
+    # from internal callers (seed data); otherwise one is derived. Existing names are never rewritten.
+    name = (data.get("name") or "").strip() or _derived_name(brand["_id"], dict(data, landing_page_url=doc["landing_page_url"]))
+    doc.setdefault("start_date", date_to_datetime(utcnow().date()))
+    doc.setdefault("description", "")
+    doc.update(
+        name=name,
+        name_lower=name.lower(),
+        brand_id=brand["_id"],
+        assigned_user_ids=members,
+        created_by_user_id=principal.user_id,
+    )
     try:
         campaign = campaigns.insert(doc)
     except DuplicateKeyError:
@@ -120,7 +175,8 @@ def update_campaign(principal, campaign_id, data):
     if campaign["status"] == "archived":
         raise ServiceError("Archived campaigns cannot be edited.")
     members = _validate_members(data.get("assigned_user_ids", []))
-    doc = _clean(data)
+    existing_start = campaign.get("start_date")
+    doc = _clean(data, existing_start=existing_start.date() if existing_start else None)
     try:
         campaigns.update(campaign["_id"], doc)  # brand_id is immutable: the campaign stays with its brand
     except DuplicateKeyError:

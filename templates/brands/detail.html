@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <div class="breadcrumb"><a href="{% url 'brands:list' %}">Brands</a>{% icon "chevron-right" "icon-sm" %}<span>{{ brand.name }}</span></div>
-    <h1>{{ brand.name }} {{ brand.status|status_badge }}</h1>
+    <div class="row">{% include "includes/brand_logo.html" with brand=brand size="lg" %}<h1>{{ brand.name }} {{ brand.status|status_badge }}</h1></div>
     {% if brand.description %}<p class="subtitle">{{ brand.description|truncatechars:180 }}</p>{% endif %}
   </div>
   {% if principal.is_admin %}
@@ -35,10 +35,10 @@
       <div class="card-header"><h2>Campaigns</h2><span class="muted">{{ campaigns|length }} total</span></div>
       {% if campaigns %}
       <div class="table-wrap"><table class="table responsive">
-        <thead><tr><th>Campaign</th><th>Primary Keyword</th><th>Team</th><th>Status</th></tr></thead>
+        <thead><tr><th>Campaign</th><th>Keywords</th><th>Team</th><th>Status</th></tr></thead>
         <tbody>{% for c in campaigns %}
           <tr><td class="cell-title"><a href="{% url 'campaigns:detail' c.id %}">{{ c.name }}</a></td>
-          <td data-label="Keyword">{{ c.primary_keyword }}</td><td data-label="Team">{{ c.assigned_user_ids|length }}</td><td data-label="Status">{{ c.status|status_badge }}</td></tr>
+          <td data-label="Keywords">{{ c.primary_keyword|default:"" }}{% if c.primary_keyword and c.secondary_keywords %}, {% endif %}{{ c.secondary_keywords|slice:":2"|join:", "|default:"" }}{% if not c.primary_keyword and not c.secondary_keywords %}—{% endif %}</td><td data-label="Team">{{ c.assigned_user_ids|length }}</td><td data-label="Status">{{ c.status|status_badge }}</td></tr>
         {% endfor %}</tbody>
       </table></div>
       {% else %}

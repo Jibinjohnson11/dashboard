@@ -1,6 +1,7 @@
 from pymongo import DESCENDING
 from pymongo.errors import DuplicateKeyError
 
+from brands import logos
 from brands.repositories import brands
 from campaigns.repositories import campaigns
 from core import audit
@@ -47,10 +48,13 @@ def _clean(data):
 def create_brand(principal, data):
     require(principal.is_admin and principal.has_perm("brands.create"))
     doc = _clean(data)
-    doc.update(created_by_user_id=principal.user_id, archived_at=None)
+    doc.update(created_by_user_id=principal.user_id, archived_at=None, logo_path=None, logo_content_type=None)
+    if data.get("logo"):
+        doc.update(logos.save_logo(data["logo"]), logo_updated_at=utcnow())
     try:
         brand = brands.insert(doc)
     except DuplicateKeyError:
+        logos.delete_logo(doc.get("logo_path"))  # don't leave an orphaned file
         raise ServiceError("A brand with this name already exists.")
     audit.record(principal.user_id, "brand.created", "brand", brand["_id"], {"name": brand["name"]})
     return brand
@@ -62,11 +66,22 @@ def update_brand(principal, brand_id, data):
     if brand["status"] == "archived":
         raise ServiceError("Archived brands cannot be edited. Restore the brand first.")
     doc = _clean(data)
+    old_logo = brand.get("logo_path")
+    if data.get("logo"):
+        doc.update(logos.save_logo(data["logo"]), logo_updated_at=utcnow())
+    elif data.get("remove_logo"):
+        doc.update(logo_path=None, logo_content_type=None, logo_updated_at=utcnow())
     try:
         brands.update(brand["_id"], doc)
     except DuplicateKeyError:
+        if data.get("logo"):
+            logos.delete_logo(doc["logo_path"])
         raise ServiceError("A brand with this name already exists.")
+    if "logo_path" in doc and old_logo and old_logo != doc["logo_path"]:
+        logos.delete_logo(old_logo)  # only after the record points at the new file
     changed = [f for f in EDITABLE_FIELDS if brand.get(f) != doc.get(f)]
+    if "logo_path" in doc:
+        changed.append("logo")
     audit.record(principal.user_id, "brand.updated", "brand", brand["_id"], {"fields": changed})
     return get_brand(principal, brand_id)
 

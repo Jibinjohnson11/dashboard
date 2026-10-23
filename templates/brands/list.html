@@ -26,7 +26,7 @@
       <tbody>
       {% for brand in page.items %}
         <tr>
-          <td class="cell-title"><a href="{% url 'brands:detail' brand.id %}">{{ brand.name }}</a></td>
+          <td class="cell-title"><span class="row nowrap">{% include "includes/brand_logo.html" with brand=brand size="sm" %}<a href="{% url 'brands:detail' brand.id %}">{{ brand.name }}</a></span></td>
           <td data-label="Website">{% if brand.website %}<a href="{{ brand.website }}" target="_blank" rel="noopener noreferrer nofollow" class="truncate">{{ brand.website|cut:"https://"|cut:"http://"|truncatechars:32 }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
           <td data-label="Industry">{{ brand.industry|default:"—" }}</td>
           <td data-label="Contact">{{ brand.contact_email|default:"—" }}</td>

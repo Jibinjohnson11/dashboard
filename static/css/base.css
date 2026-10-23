@@ -3,10 +3,10 @@
    ========================================================================== */
 
 :root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
+  --primary: #1e3a8a;
+  --primary-hover: #172554;
   --primary-soft: #eff6ff;
-  --primary-ring: rgba(37, 99, 235, 0.28);
+  --primary-ring: rgba(30, 58, 138, 0.28);
   --navy: #0f172a;
   --bg: #f8fafc;
   --surface: #ffffff;
@@ -118,8 +118,8 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
 .brand-mark {
   width: 32px; height: 32px; border-radius: 9px; flex: none;
   display: grid; place-items: center; color: #fff;
-  background: linear-gradient(135deg, var(--primary), #1e40af);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+  background: linear-gradient(135deg, var(--primary), #172554);
+  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.35);
 }
 .brand-mark .icon { width: 18px; height: 18px; }
 
@@ -180,7 +180,7 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
 }
 .btn:hover { text-decoration: none; }
 .btn:disabled, .btn.is-loading { opacity: 0.65; cursor: not-allowed; }
-.btn-primary { background: var(--primary); color: #fff; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3); }
+.btn-primary { background: var(--primary); color: #fff; box-shadow: 0 1px 2px rgba(30, 58, 138, 0.3); }
 .btn-primary:hover { background: var(--primary-hover); color: #fff; }
 .btn-secondary { background: #fff; color: var(--text-2); border-color: var(--border-strong); }
 .btn-secondary:hover { background: var(--surface-2); color: var(--navy); }
@@ -369,7 +369,7 @@ button.tag .icon { width: 13px; height: 13px; opacity: 0.6; }
 
 .alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius); border: 1px solid; margin-bottom: 16px; }
 .alert p { margin: 0; }
-.alert-info { background: var(--primary-soft); border-color: #dbeafe; color: #1e3a8a; }
+.alert-info { background: var(--primary-soft); border-color: #dbeafe; color: #172554; }
 .alert-warning { background: var(--warning-soft); border-color: #fde68a; color: #78350f; }
 .alert-danger { background: var(--danger-soft); border-color: #fecaca; color: #7f1d1d; }
 .alert-success { background: var(--success-soft); border-color: #bbf7d0; color: #14532d; }
@@ -427,3 +427,14 @@ dialog.dialog[open] { animation: toast-in 0.18s var(--ease); }
 .prose ul, .prose ol { padding-left: 1.4em; margin: 0 0 1em; }
 .prose blockquote { margin: 0 0 1em; padding: 4px 16px; border-left: 3px solid var(--border-strong); color: var(--muted); }
 .prose a { text-decoration: underline; }
+
+/* ---------- Brand logos ---------- */
+.brand-logo { display: inline-grid; place-items: center; flex: none; overflow: hidden; border-radius: 10px; border: 1px solid var(--border); background: linear-gradient(135deg, #eef2ff, #e0e7ff); color: var(--primary-hover); font-weight: 700; }
+.brand-logo img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.brand-logo-sm { width: 30px; height: 30px; border-radius: 8px; font-size: 0.7rem; }
+.brand-logo-md { width: 40px; height: 40px; font-size: 0.8rem; }
+.brand-logo-lg { width: 56px; height: 56px; border-radius: 12px; font-size: 1rem; }
+.logo-upload { display: flex; align-items: flex-start; gap: 16px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius); background: #fcfdfe; }
+.logo-upload-body { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.logo-upload-body label.btn { cursor: pointer; }
+.logo-upload input[type="file"]:focus-visible + span, .logo-upload label.btn:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }

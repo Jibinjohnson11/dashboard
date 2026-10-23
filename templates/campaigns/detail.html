@@ -4,8 +4,8 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <div class="breadcrumb"><a href="{% url 'campaigns:list' %}">Campaigns</a>{% icon "chevron-right" "icon-sm" %}<span>{{ campaign.name }}</span></div>
-    <h1>{{ campaign.name }} {{ campaign.status|status_badge }}</h1>
+    <div class="breadcrumb"><a href="{% url 'campaigns:list' %}">Campaigns</a>{% icon "chevron-right" "icon-sm" %}<span>{{ campaign.title }}</span></div>
+    <h1>{{ campaign.title }} {{ campaign.status|status_badge }}</h1>
     <p class="subtitle">{% if campaign.brand %}<a href="{% url 'brands:detail' campaign.brand.id %}">{{ campaign.brand.name }}</a>{% endif %}</p>
   </div>
   <div class="page-actions">
@@ -40,9 +40,9 @@
       <div class="card-header"><h2>Campaign information</h2></div>
       <div class="card-body">
         <dl class="detail-list">
-          <dt>Primary keyword</dt><dd><button type="button" class="tag" data-copy="{{ campaign.primary_keyword }}" title="Click to copy">{{ campaign.primary_keyword }} {% icon "copy" %}</button></dd>
-          <dt>Secondary</dt><dd>{% if campaign.secondary_keywords %}<div class="tag-list">{% for k in campaign.secondary_keywords %}<button type="button" class="tag" data-copy="{{ k }}" title="Click to copy">{{ k }} {% icon "copy" %}</button>{% endfor %}</div>{% else %}—{% endif %}</dd>
-          <dt>Target URL</dt><dd>{% if campaign.target_url %}<span class="copy-line"><a href="{{ campaign.target_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ campaign.target_url }}</a>{% include "includes/copy_button.html" with value=campaign.target_url label="target URL" %}</span>{% else %}—{% endif %}</dd>
+          {% if campaign.primary_keyword %}<dt>Primary keyword</dt><dd><button type="button" class="tag" data-copy="{{ campaign.primary_keyword }}" title="Click to copy">{{ campaign.primary_keyword }} {% icon "copy" %}</button></dd>{% endif %}
+          <dt>{% if campaign.primary_keyword %}Secondary{% else %}Keywords{% endif %}</dt><dd>{% if campaign.secondary_keywords %}<div class="tag-list">{% for k in campaign.secondary_keywords %}<button type="button" class="tag" data-copy="{{ k }}" title="Click to copy">{{ k }} {% icon "copy" %}</button>{% endfor %}</div>{% else %}—{% endif %}</dd>
+          <dt>Landing page</dt><dd>{% if campaign.landing_page_url %}<span class="copy-line"><a href="{{ campaign.landing_page_url }}" target="_blank" rel="noopener noreferrer nofollow">{{ campaign.landing_page_url }}</a>{% include "includes/copy_button.html" with value=campaign.landing_page_url label="landing page URL" %}</span>{% else %}—{% endif %}</dd>
           <dt>Location</dt><dd>{{ campaign.target_location|default:"—" }}</dd>
           <dt>Start date</dt><dd>{{ campaign.start_date|date:"M j, Y"|default:"—" }}</dd>
           <dt>End date</dt><dd>{{ campaign.end_date|date:"M j, Y"|default:"Ongoing" }}</dd>

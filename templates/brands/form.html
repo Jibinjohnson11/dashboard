@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{% if is_edit %}Edit {{ brand.name }}{% else %}New Brand{% endif %}{% endblock %}
 {% block page_title %}Brands{% endblock %}
 {% block content %}
@@ -8,7 +9,7 @@
     <h1>{% if is_edit %}Edit brand{% else %}Create brand{% endif %}</h1>
   </div>
 </div>
-<form method="post" class="card" novalidate data-loading-form>
+<form method="post" class="card" enctype="multipart/form-data" novalidate data-loading-form>
   {% csrf_token %}
   <div class="card-body">
     {% include "includes/form_errors.html" %}
@@ -23,6 +24,22 @@
       {% include "includes/field.html" with field=form.contact_name %}
       {% include "includes/field.html" with field=form.contact_email %}
       {% include "includes/field.html" with field=form.contact_phone %}
+      <div class="field{% if form.logo.errors %} has-error{% endif %}">
+        <span class="label" id="logo-label">Brand logo</span>
+        <div class="logo-upload">
+          <span class="brand-logo brand-logo-lg" data-logo-preview>
+            {% if brand.logo_path %}<img src="{% url 'brands:logo' brand.id %}?v={{ brand.logo_updated_at|date:'U' }}" alt="Current logo">{% else %}{% icon "building" "icon-lg" %}{% endif %}
+          </span>
+          <div class="logo-upload-body">
+            <label class="btn btn-secondary btn-sm" for="{{ form.logo.id_for_label }}">{% icon "download" "icon-sm" %} {% if brand.logo_path %}Replace logo{% else %}Upload logo{% endif %}</label>
+            <input type="file" name="{{ form.logo.html_name }}" id="{{ form.logo.id_for_label }}" class="sr-only" accept="image/png,image/jpeg,image/webp,image/gif" data-logo-input aria-labelledby="logo-label" aria-describedby="logo-help">
+            <span class="muted small" data-logo-filename>{% if brand.logo_path %}Current logo{% else %}No file chosen{% endif %}</span>
+            <p class="help" id="logo-help">{{ form.logo.help_text }}</p>
+            {% if brand.logo_path %}<label class="checkbox small">{{ form.remove_logo }} Remove current logo</label>{% endif %}
+            {% for e in form.logo.errors %}<p class="field-error" role="alert">{% icon "alert-circle" "icon-sm" %} {{ e }}</p>{% endfor %}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="card-footer form-actions">
@@ -31,3 +48,4 @@
   </div>
 </form>
 {% endblock %}
+{% block scripts %}<script src="{% static 'js/brands.js' %}" defer></script>{% endblock %}
