@@ -306,7 +306,8 @@ The app is ready for any Django-compatible host (Render, Railway, Fly.io, Heroku
    ```
 4. **Web process:** `gunicorn config.wsgi:application -c gunicorn.conf.py`. It binds to `$PORT`, and worker and thread counts can be changed with `GUNICORN_*` variables. WhiteNoise serves static files with hashed names and long-lived caching.
 5. **Health check:** `GET /healthz/` returns `200 {"status":"ok"}` when both SQL and MongoDB are reachable, and `503` otherwise.
-6. **Check settings:** `DJANGO_ENV=production ... python manage.py check --deploy`. The only remaining warning is HSTS preload, which is deliberately opt-in through `DJANGO_HSTS_PRELOAD` because it is hard to undo.
+6. **Check settings:** `DJANGO_ENV=production ... python manage.py check --deploy`. Besides Django's own checks, it warns (`seo.W001`–`W006`) if production still uses SQLite, a local MongoDB, console email, a per-process cache, an unwritable `MEDIA_ROOT`, or has no `DJANGO_CSRF_TRUSTED_ORIGINS`.
+   On hosts without an interactive shell, create the first admin with `python manage.py create_admin --noinput` and the `DJANGO_ADMIN_EMAIL` / `DJANGO_ADMIN_NAME` / `DJANGO_ADMIN_PASSWORD` variables (remove the password variable afterwards). The only remaining warning is HSTS preload, which is deliberately opt-in through `DJANGO_HSTS_PRELOAD` because it is hard to undo.
 7. **Email:** use your provider's SMTP credentials (SendGrid, SES, Postmark, Mailgun and so on). Set `REGISTRATION_MODE=invite_only` if you don't want public sign-ups.
 
 **Docker:**
