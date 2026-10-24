@@ -220,7 +220,11 @@ if IS_PRODUCTION:
     SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
 
 # --- Email ---
-EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+# Production never defaults to the console backend, which would print reset/invite links to the logs.
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend" if IS_PRODUCTION else "django.core.mail.backends.console.EmailBackend",
+)
 EMAIL_HOST = env("EMAIL_HOST", "localhost")
 EMAIL_PORT = env_int("EMAIL_PORT", 587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
@@ -272,10 +276,12 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {"json": {"()": "core.logging.JsonFormatter"}},
+    # Password-reset and invite link tokens never reach the logs (e.g. in "Not Found: /accounts/reset/...").
+    "filters": {"redact_tokens": {"()": "core.logging.RedactTokensFilter"}},
     "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "json"},
+        "console": {"class": "logging.StreamHandler", "formatter": "json", "filters": ["redact_tokens"]},
         # Tests format every record (catching bad `extra=` keys) but print nothing.
-        "null": {"class": "logging.NullHandler", "formatter": "json"},
+        "null": {"class": "logging.NullHandler", "formatter": "json", "filters": ["redact_tokens"]},
     },
     "root": {"handlers": ["console"], "level": "WARNING"},
     "loggers": {
