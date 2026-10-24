@@ -7,7 +7,9 @@ never touch a real database.
 """
 import logging
 import threading
+from urllib.parse import parse_qs, urlsplit
 
+import certifi
 from django.conf import settings
 from pymongo import ASCENDING, DESCENDING, MongoClient
 
@@ -31,6 +33,23 @@ COLLECTIONS = (
 )
 
 
+def _tls_options(uri):
+    """Use certifi's CA bundle for TLS connections, so verification doesn't depend on the
+    OS/Python certificate store (python.org builds on macOS ship without one).
+
+    TLS is on for mongodb+srv:// unless the URI says tls=false/ssl=false, and on for
+    mongodb:// only when tls=true/ssl=true. A tlsCAFile already given in the URI wins.
+    Certificate and hostname verification are never relaxed.
+    """
+    parts = urlsplit(uri)
+    options = {key.lower(): values[-1].strip().lower() for key, values in parse_qs(parts.query).items()}
+    if "tlscafile" in options:
+        return {}
+    explicit = options.get("tls", options.get("ssl"))
+    uses_tls = explicit == "true" if explicit is not None else parts.scheme == "mongodb+srv"
+    return {"tlsCAFile": certifi.where()} if uses_tls else {}
+
+
 def _create_client():
     if settings.MONGODB_USE_MOCK:
         import mongomock
@@ -43,6 +62,7 @@ def _create_client():
         serverSelectionTimeoutMS=settings.MONGODB_TIMEOUT_MS,
         connectTimeoutMS=settings.MONGODB_TIMEOUT_MS,
         appname="seo-management-dashboard",
+        **_tls_options(settings.MONGODB_URI),
     )
 
 

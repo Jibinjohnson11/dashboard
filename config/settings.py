@@ -8,6 +8,7 @@ import os
 import sys
 from pathlib import Path
 
+import certifi
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.csp import CSP
@@ -122,8 +123,19 @@ DATABASES = {
     "default": dj_database_url.parse(
         env("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=env_int("DATABASE_CONN_MAX_AGE", 60),
+        # Serverless Postgres (Neon) suspends idle computes; re-check a kept connection before reusing it.
+        conn_health_checks=env_bool("DATABASE_CONN_HEALTH_CHECKS", True),
     )
 }
+if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+    _db_options = DATABASES["default"].setdefault("OPTIONS", {})
+    # sslmode=verify-ca/verify-full needs a CA bundle; use certifi's unless the URL names one.
+    if _db_options.get("sslmode") in {"verify-ca", "verify-full"}:
+        _db_options.setdefault("sslrootcert", certifi.where())
+    # Transaction-mode poolers (e.g. Neon's "-pooler" endpoint) don't support server-side cursors.
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = env_bool(
+        "DATABASE_DISABLE_SERVER_SIDE_CURSORS", "-pooler" in (DATABASES["default"].get("HOST") or "")
+    )
 
 # --- MongoDB: SEO business data ---
 MONGODB_URI = env("MONGODB_URI", "mongodb://127.0.0.1:27017")

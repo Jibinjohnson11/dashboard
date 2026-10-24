@@ -1,10 +1,12 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
-# In Render: New → Blueprint → pick this repo. You'll be asked for MONGODB_URI (from MongoDB Atlas).
+# In Render: New → Blueprint → pick this repo. You'll be asked for DATABASE_URL (Neon) and MONGODB_URI (from MongoDB Atlas).
 services:
   - type: web
     name: dashboard
     runtime: docker
     plan: free
+    # Same region as Neon (Singapore); closest Render region to MongoDB Atlas (Mumbai). Can't be changed later.
+    region: singapore
     healthCheckPath: /healthz/
     # Free instances have no pre-deploy step, so run the Procfile release commands on start.
     dockerCommand: >-
@@ -23,10 +25,9 @@ services:
         value: "true"
       - key: FORWARDED_ALLOW_IPS
         value: "*"
+      # Existing Neon database: paste its pooled URL (with sslmode=verify-full) when Render asks.
       - key: DATABASE_URL
-        fromDatabase:
-          name: dashboard-db
-          property: connectionString
+        sync: false
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DB_NAME
@@ -40,9 +41,3 @@ services:
       # The free plan has 512 MB of memory; keep gunicorn small.
       - key: GUNICORN_WORKERS
         value: "2"
-
-databases:
-  - name: dashboard-db
-    plan: free
-    databaseName: seo_dashboard
-    user: seo_user
