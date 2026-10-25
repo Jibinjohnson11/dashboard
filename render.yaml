@@ -25,9 +25,14 @@ services:
         value: "true"
       - key: FORWARDED_ALLOW_IPS
         value: "*"
-      # Existing Neon database: paste its pooled URL (with sslmode=verify-full) when Render asks.
+      # Neon production branch: paste DATABASE_URL (pooled) and DATABASE_URL_UNPOOLED (direct, for migrations)
+      # from `neon env pull` when Render asks.
       - key: DATABASE_URL
         sync: false
+      - key: DATABASE_URL_UNPOOLED
+        sync: false
+      - key: DATABASE_SSLMODE
+        value: verify-full
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DB_NAME

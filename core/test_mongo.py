@@ -4,6 +4,7 @@ No network: MongoClient is replaced by a recorder, and settings are only evaluat
 """
 import os
 import runpy
+import sys
 from pathlib import Path
 from unittest import mock
 
@@ -77,12 +78,15 @@ class SharedClientTests(SimpleTestCase):
 SETTINGS_FILE = Path(settings.BASE_DIR) / "config" / "settings.py"
 
 
-def database_settings(**env):
+# Not "test": under `manage.py test` settings ignore DATABASE_URL (see TestDatabaseIsolationTests).
+def database_settings(argv=("manage.py", "runserver"), **env):
     """Evaluate config/settings.py under the given environment and return DATABASES["default"].
 
     Values given here win over .env (load_dotenv never overrides), and os.environ is restored afterwards.
     """
-    with mock.patch.dict(os.environ, env):
+    # A neutral DJANGO_ENV: "development" would load ~/.config/seo-dashboard/dev.env over these values and run the dev guard.
+    env = {"DJANGO_ENV": "test", "DATABASE_URL_UNPOOLED": "", "DATABASE_SSLMODE": "", **env}
+    with mock.patch.dict(os.environ, env), mock.patch.object(sys, "argv", list(argv)):
         return runpy.run_path(str(SETTINGS_FILE))["DATABASES"]["default"]
 
 
@@ -110,9 +114,39 @@ class PostgresTLSSettingsTests(SimpleTestCase):
         db = database_settings(DATABASE_URL="postgresql://ep-app-pooler.example.com/neondb?sslmode=require")
         self.assertNotIn("sslrootcert", db["OPTIONS"])
 
+    def test_sslmode_override_replaces_url_sslmode(self):
+        db = database_settings(
+            DATABASE_URL="postgresql://ep-app-pooler.example.com/neondb?sslmode=require", DATABASE_SSLMODE="verify-full"
+        )
+        self.assertEqual(db["OPTIONS"]["sslmode"], "verify-full")
+        self.assertEqual(db["OPTIONS"]["sslrootcert"], certifi.where())
+
+    def test_schema_commands_use_unpooled_url(self):
+        urls = {
+            "DATABASE_URL": "postgresql://ep-app-pooler.example.com/neondb",
+            "DATABASE_URL_UNPOOLED": "postgresql://ep-app.example.com/neondb",
+        }
+        for command in ("migrate", "createcachetable"):
+            db = database_settings(argv=("manage.py", command), **urls)
+            self.assertEqual(db["HOST"], "ep-app.example.com")
+            self.assertFalse(db["DISABLE_SERVER_SIDE_CURSORS"])
+        self.assertEqual(database_settings(argv=("manage.py", "runserver"), **urls)["HOST"], "ep-app-pooler.example.com")
+
     def test_sqlite_fallback_when_database_url_empty(self):
         db = database_settings(DATABASE_URL="")
         self.assertEqual(db["ENGINE"], "django.db.backends.sqlite3")
         self.assertEqual(Path(db["NAME"]).name, "db.sqlite3")
         self.assertFalse(db.get("DISABLE_SERVER_SIDE_CURSORS"))
         self.assertNotIn("sslrootcert", db.get("OPTIONS", {}))
+
+
+class TestDatabaseIsolationTests(SimpleTestCase):
+    NEON_URL = "postgresql://dev:dummy@ep-fancy-bread-aofvlpfd.c-2.ap-southeast-1.aws.neon.tech/seo_dashboard_dev"
+
+    def test_test_runner_ignores_database_url(self):
+        db = database_settings(argv=("manage.py", "test"), DATABASE_URL=self.NEON_URL, DJANGO_INTEGRATION_TESTS="")
+        self.assertEqual(db["ENGINE"], "django.db.backends.sqlite3")
+
+    def test_integration_tests_need_development_env(self):
+        with self.assertRaisesMessage(Exception, "DJANGO_INTEGRATION_TESTS requires DJANGO_ENV=development"):
+            database_settings(argv=("manage.py", "test"), DATABASE_URL=self.NEON_URL, DJANGO_INTEGRATION_TESTS="true")

@@ -15,7 +15,10 @@ from django.utils.csp import CSP
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+if os.environ.get("DJANGO_ENV", "").lower() == "development":
+    load_dotenv(Path.home() / ".config/seo-dashboard/dev.env", override=True)
+else:
+    load_dotenv(BASE_DIR / ".env")
 
 
 def env(name, default=None):
@@ -41,12 +44,18 @@ def env_list(name, default=""):
 TESTING = len(sys.argv) > 1 and sys.argv[1] == "test"
 ENVIRONMENT = env("DJANGO_ENV", "development").lower()
 IS_PRODUCTION = ENVIRONMENT == "production"
-DEBUG = env_bool("DJANGO_DEBUG", default=not IS_PRODUCTION) and not IS_PRODUCTION
+# Publicly hosted (set in the Docker image): HTTPS-only cookies, DEBUG off and a real secret key, whatever DJANGO_ENV is.
+IS_DEPLOYED = IS_PRODUCTION or env_bool("DJANGO_DEPLOYED", False)
+if IS_DEPLOYED and ENVIRONMENT not in {"development", "production"}:
+    raise ImproperlyConfigured("DJANGO_ENV must be 'development' or 'production' on a deployed instance.")
+DEBUG = env_bool("DJANGO_DEBUG", default=not IS_DEPLOYED) and not IS_PRODUCTION
+if IS_DEPLOYED and DEBUG:
+    raise ImproperlyConfigured("DJANGO_DEBUG must be False on a deployed instance.")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
-    if IS_PRODUCTION:
-        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production.")
+    if IS_DEPLOYED:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set on a deployed instance.")
     # Development/test only: an ephemeral key (sessions reset on restart).
     from django.core.management.utils import get_random_secret_key
 
@@ -119,9 +128,20 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # --- Relational database: Django auth, sessions, permissions, migrations ---
+# Schema changes go over the direct connection: PgBouncer's transaction mode drops session state mid-migration.
+SCHEMA_COMMAND = len(sys.argv) > 1 and sys.argv[1] in {"migrate", "createcachetable"}
+# `manage.py test` ignores DATABASE_URL (and .env) and uses Django's in-memory SQLite test database, so a test run
+# can never create, flush or drop databases on Neon. DJANGO_INTEGRATION_TESTS=true opts back in, and only for the
+# guarded development database below (Django then creates and drops test_seo_dashboard_dev on that server).
+INTEGRATION_TESTS = TESTING and env_bool("DJANGO_INTEGRATION_TESTS", False)
+if INTEGRATION_TESTS and ENVIRONMENT != "development":
+    raise ImproperlyConfigured("DJANGO_INTEGRATION_TESTS requires DJANGO_ENV=development.")
+SQLITE_URL = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
 DATABASES = {
     "default": dj_database_url.parse(
-        env("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        SQLITE_URL
+        if TESTING and not INTEGRATION_TESTS
+        else (SCHEMA_COMMAND and env("DATABASE_URL_UNPOOLED")) or env("DATABASE_URL") or SQLITE_URL,
         conn_max_age=env_int("DATABASE_CONN_MAX_AGE", 60),
         # Serverless Postgres (Neon) suspends idle computes; re-check a kept connection before reusing it.
         conn_health_checks=env_bool("DATABASE_CONN_HEALTH_CHECKS", True),
@@ -129,6 +149,9 @@ DATABASES = {
 }
 if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
     _db_options = DATABASES["default"].setdefault("OPTIONS", {})
+    # `neon env pull` rewrites the URLs with sslmode=require; DATABASE_SSLMODE keeps a stricter mode across pulls.
+    if env("DATABASE_SSLMODE"):
+        _db_options["sslmode"] = env("DATABASE_SSLMODE")
     # sslmode=verify-ca/verify-full needs a CA bundle; use certifi's unless the URL names one.
     if _db_options.get("sslmode") in {"verify-ca", "verify-full"}:
         _db_options.setdefault("sslrootcert", certifi.where())
@@ -208,11 +231,12 @@ SECURE_CSP = {
     "frame-ancestors": [CSP.NONE],
 }
 
-if IS_PRODUCTION:
+if IS_DEPLOYED:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", True)
-    SECURE_HSTS_SECONDS = env_int("DJANGO_HSTS_SECONDS", 31536000)
+    # One hour outside production: a test deployment's mistakes shouldn't stick in browsers for a year.
+    SECURE_HSTS_SECONDS = env_int("DJANGO_HSTS_SECONDS", 31536000 if IS_PRODUCTION else 3600)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = env_bool("DJANGO_HSTS_PRELOAD", False)
     if env_bool("DJANGO_BEHIND_PROXY", False):
@@ -234,6 +258,63 @@ EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
 EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 15)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "SEO Dashboard <no-reply@localhost>")
 
+
+# Block accidental production database access in development. Exact matches only, so SQLite, localhost,
+# mock MongoDB and the production Neon branch / Atlas cluster all stop startup.
+# Messages name the failed check, never a value: the URLs carry passwords.
+DEV_PG_HOST = "ep-fancy-bread-aofvlpfd.c-2.ap-southeast-1.aws.neon.tech"
+DEV_MONGO_HOST = "seo-dashboard-dev.fcolxbm.mongodb.net"
+DEV_MONGO_USER = "seoDashboardDev"
+DEV_DB_NAME = "seo_dashboard_dev"
+if ENVIRONMENT == "development" and (not TESTING or INTEGRATION_TESTS):
+    from pymongo.errors import ConfigurationError, InvalidURI
+    # pymongo's own URI parser, minus the SRV DNS lookup that the public parse_uri() does.
+    from pymongo.uri_parser_shared import _validate_uri
+
+    def _dev_guard_failed(reason):
+        return ImproperlyConfigured(f"Development database guard: {reason}")
+
+    pg = DATABASES["default"]
+    if not env("DATABASE_URL"):
+        raise _dev_guard_failed("DATABASE_URL must be set (SQLite is not allowed).")
+    if pg["ENGINE"] != "django.db.backends.postgresql":
+        raise _dev_guard_failed("DATABASE_URL must be a PostgreSQL URL.")
+    if pg["HOST"] != DEV_PG_HOST:
+        raise _dev_guard_failed("PostgreSQL host is not the approved Neon development host.")
+    if pg["NAME"] != DEV_DB_NAME:
+        raise _dev_guard_failed(f"PostgreSQL database must be {DEV_DB_NAME}.")
+
+    # Tests always use mock MongoDB (set above), integration runs included.
+    if not TESTING:
+        if not env("MONGODB_URI"):
+            raise _dev_guard_failed("MONGODB_URI must be set (localhost MongoDB is not allowed).")
+        try:
+            mongo = _validate_uri(MONGODB_URI, 27017, True, False, True, None)
+        except (InvalidURI, ConfigurationError, ValueError):
+            mongo = None  # raised below, outside the except, so pymongo's message (which may quote the URI) isn't chained
+        if mongo is None:
+            raise _dev_guard_failed("MONGODB_URI is not a valid MongoDB connection string.")
+        if not MONGODB_URI.startswith("mongodb+srv://") or mongo["fqdn"] != DEV_MONGO_HOST:
+            raise _dev_guard_failed(f"MONGODB_URI must be mongodb+srv://...@{DEV_MONGO_HOST}.")
+        if mongo["username"] != DEV_MONGO_USER:
+            raise _dev_guard_failed("MongoDB username is not the approved development user.")
+        if mongo["database"] not in (None, DEV_DB_NAME) or MONGODB_DB_NAME != DEV_DB_NAME:
+            raise _dev_guard_failed(f"MongoDB database (MONGODB_DB_NAME and the URI path) must be {DEV_DB_NAME}.")
+        if MONGODB_USE_MOCK:
+            raise _dev_guard_failed("MONGODB_USE_MOCK must be False.")
+
+        if IS_DEPLOYED:
+            # Console/file backends would put password-reset and invite links in the hosting platform's logs.
+            if EMAIL_BACKEND.endswith(("console.EmailBackend", "filebased.EmailBackend")):
+                raise ImproperlyConfigured(
+                    "A deployed development instance must not use the console or file email backend; "
+                    "set EMAIL_BACKEND to the SMTP or dummy backend."
+                )
+        elif EMAIL_BACKEND != "django.core.mail.backends.console.EmailBackend":
+            raise ImproperlyConfigured(
+                "Development must use the console email backend."
+            )
+
 # --- Internationalisation ---
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = env("TIME_ZONE", "UTC")
@@ -249,14 +330,14 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": (
             "whitenoise.storage.CompressedManifestStaticFilesStorage"
-            if IS_PRODUCTION
+            if IS_DEPLOYED
             else "django.contrib.staticfiles.storage.StaticFilesStorage"
         )
     },
 }
 
-if not IS_PRODUCTION:
-    # Serve straight from STATICFILES_DIRS in development; `collectstatic` is only needed for production.
+if not IS_DEPLOYED:
+    # Serve straight from STATICFILES_DIRS in development; `collectstatic` is only needed when deployed.
     WHITENOISE_USE_FINDERS = True
     WHITENOISE_AUTOREFRESH = True
     import warnings

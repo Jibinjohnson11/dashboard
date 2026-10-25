@@ -5,3 +5,10 @@ __pycache__
 .env
 db.sqlite3*
 staticfiles
+.env.*
+!.env.example
+!.env.production.example
+.neon
+node_modules
+media
+*.backup

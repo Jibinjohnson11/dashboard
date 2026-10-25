@@ -13,3 +13,5 @@ htmlcov/
 .DS_Store
 *.log
 media/
+.neon
+node_modules/
