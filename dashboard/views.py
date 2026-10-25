@@ -15,12 +15,32 @@ logger = logging.getLogger("seo.health")
 
 @module_required("dashboard")
 def home(request):
+    import time
+
     principal = request.principal
+    start = time.perf_counter()
+
     stats = services.summary(principal)
+    t1 = time.perf_counter()
+
+    charts = services.charts(principal, stats["status_counts"])
+    t2 = time.perf_counter()
+
+    recent = services.recent_activity(principal)
+    t3 = time.perf_counter()
+
+    logger.warning(
+        "DASHBOARD_PERFORMANCE summary=%.3fs charts=%.3fs recent=%.3fs total=%.3fs",
+        t1 - start,
+        t2 - t1,
+        t3 - t2,
+        t3 - start,
+    )
+
     return render(request, "dashboard/home.html", {
         "stats": stats,
-        "charts": services.charts(principal, stats["status_counts"]),
-        "recent": services.recent_activity(principal),
+        "charts": charts,
+        "recent": recent,
     })
 
 
